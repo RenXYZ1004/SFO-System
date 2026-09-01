@@ -1,0 +1,102 @@
+/**
+ * Local dev server that mimics Vercel's routing:
+ *   /            -> public/index.html
+ *   /api/<name>  -> api/<name>.js  (default export handler)
+ *
+ *   node tools/dev-server.js [port]
+ *
+ * Vercel itself does not need this — it is only so the app can be run
+ * without installing the Vercel CLI.
+ */
+import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+
+for (const file of ['.env.local', '.env']) {
+  const p = path.join(root, file);
+  if (!existsSync(p)) continue;
+  for (const line of readFileSync(p, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  }
+}
+
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
+               '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://localhost');
+  let pathname = decodeURIComponent(url.pathname);
+
+  // --- API routes -------------------------------------------------
+  if (pathname.startsWith('/api/')) {
+    const name = pathname.slice(5).replace(/[^a-zA-Z0-9_-]/g, '');
+    const file = path.join(root, 'api', `${name}.js`);
+    if (!existsSync(file)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'No such endpoint' }));
+    }
+
+    const body = await readBody(req);
+    const shim = {
+      method: req.method,
+      headers: req.headers,
+      query: Object.fromEntries(url.searchParams),
+      body,
+    };
+    const resShim = {
+      statusCode: 200,
+      setHeader: (k, v) => res.setHeader(k, v),
+      status(code) { this.statusCode = code; return this; },
+      json(obj) {
+        res.writeHead(this.statusCode, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(obj));
+      },
+      send(text) { res.writeHead(this.statusCode); res.end(text); },
+    };
+
+    try {
+      // Vercel reuses a warm instance, so by default we import once and keep
+      // module state (this is what makes the rate limiter behave realistically).
+      // Set DEV_HOT=1 for cache-busting hot reload while editing.
+      const base = new URL(`../api/${name}.js`, import.meta.url).href;
+      const spec = process.env.DEV_HOT ? `${base}?t=${Date.now()}` : base;
+      const mod = await import(spec);
+      await mod.default(shim, resShim);
+    } catch (err) {
+      console.error(err);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
+    return;
+  }
+
+  // --- static -----------------------------------------------------
+  if (pathname === '/') pathname = '/index.html';
+  const file = path.join(root, 'public', pathname);
+  if (!file.startsWith(path.join(root, 'public')) || !existsSync(file)) {
+    res.writeHead(404).end('Not found');
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
+  res.end(await readFile(file));
+});
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on('data', (c) => (raw += c));
+    req.on('end', () => {
+      if (!raw) return resolve({});
+      try { resolve(JSON.parse(raw)); }
+      catch { resolve(Object.fromEntries(new URLSearchParams(raw))); }
+    });
+  });
+}
+
+const port = Number(process.argv[2]) || 3000;
+server.listen(port, () => console.log(`Dev server: http://localhost:${port}`));

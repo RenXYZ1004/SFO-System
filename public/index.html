@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Registration Form</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <form id="form" class="card" novalidate autocomplete="on">
+      <div class="bar"></div>
+      <header class="pad head">
+        <h1 id="title">Registration Form</h1>
+        <p id="desc" class="sub"></p>
+        <p class="req-note"><span class="req">*</span> Indicates required question</p>
+      </header>
+
+      <div id="banner" class="banner" hidden></div>
+      <div id="fields" class="pad"></div>
+
+      <div class="pad actions">
+        <button id="submit" type="submit">Register</button>
+        <span id="status" class="status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+
+    <section id="done" class="card done" hidden>
+      <div class="bar"></div>
+      <div class="pad center">
+        <div class="tick">&#10003;</div>
+        <h2>Registration recorded</h2>
+        <p id="done-msg"></p>
+        <p class="ref">Ref: <span id="ref"></span></p>
+        <div id="mail-warn" class="warn" hidden></div>
+        <p><a href="#" id="again">Submit another response</a></p>
+      </div>
+    </section>
+
+    <footer class="foot">Responses are recorded in the linked Google Sheet.</footer>
+  </main>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
