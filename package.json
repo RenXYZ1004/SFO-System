@@ -11,7 +11,8 @@
     "dev": "node tools/dev-server.js",
     "token": "node tools/get-refresh-token.js",
     "schema": "node tools/fetch-form-schema.js",
-    "test:smtp": "node tools/test-smtp.js"
+    "test:smtp": "node tools/test-smtp.js",
+    "import": "node tools/import-form-source.js"
   },
   "keywords": [],
   "author": "",
