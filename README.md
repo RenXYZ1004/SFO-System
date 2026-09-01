@@ -1,6 +1,6 @@
-# Registration System — cloned Google Form → Sheet → Gmail confirmation
+# Fun Run Registration — cloned Google Form → Sheet → Gmail confirmation
 
-A public web form (a clone of your Google Form) deployed on **Vercel**. A
+A public fun run registration page (a clone of your Google Form) deployed on **Vercel**. A
 submission is written into the Google Sheet through the Google Form, and a
 confirmation email is sent over **Gmail SMTP with OAuth2 (XOAUTH2)** — but
 **only after** the registration has actually been recorded.
@@ -43,8 +43,15 @@ Southville International School and Colleges".
 
 ### 1. Clone the real form's fields
 ```bash
-npm run schema
+npm run schema                    # if the form is "Anyone with the link"
+npm run import -- payload.json    # if it stays sign-in restricted
 ```
+
+For the second, open the form signed in, press F12, and run:
+```js
+copy(JSON.stringify(FB_PUBLIC_LOAD_DATA_))
+```
+Paste the result into `payload.json`.
 Reads the live form and rewrites `lib/form-schema.js` with the real questions,
 entry ids, required flags and choices. The web page and all validation are
 driven from that one file, so nothing else needs editing.
@@ -118,6 +125,8 @@ switch to a Gmail App Password — the mailer takes that path automatically.
 | `api/schema.js` | serves the schema to the front-end |
 | `public/index.html` `styles.css` `app.js` | the cloned form UI (light + dark) |
 | `tools/fetch-form-schema.js` | regenerates `form-schema.js` from the live form |
+| `tools/import-form-source.js` | same, from a saved page or pasted payload |
+| `lib/parse-form.js` | shared Google Forms payload parser |
 | `tools/get-refresh-token.js` | one-time OAuth consent → refresh token |
 | `tools/test-smtp.js` | end-to-end mail check |
 | `tools/dev-server.js` | local stand-in for Vercel routing |

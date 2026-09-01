@@ -4,7 +4,7 @@ import { submitToGoogleForm } from '../lib/google-form.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
 
-const APP_NAME = process.env.APP_NAME || 'Registration System';
+const APP_NAME = process.env.APP_NAME || 'Fun Run Registration';
 
 // Very small in-memory rate limit. Serverless instances are recycled, so this
 // only blunts bursts against a warm instance — it is not a hard guarantee.

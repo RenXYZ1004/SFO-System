@@ -53,6 +53,9 @@ function renderField(f) {
             <input type="radio" id="f_${esc(f.name)}_${i}" name="${esc(f.name)}" value="${esc(o)}">
             <label for="f_${esc(f.name)}_${i}">${esc(o)}</label>
           </div>`).join('');
+  } else if (f.type === 'paragraph') {
+    control = `<textarea name="${esc(f.name)}" id="f_${esc(f.name)}" rows="3"
+                  placeholder="Your answer"></textarea>`;
   } else {
     const type = f.type === 'email' ? 'email' : 'text';
     const max = f.maxLength ? ` maxlength="${f.maxLength}"` : '';

@@ -27,16 +27,17 @@ h2{margin:0 0 8px;font-size:21px;font-weight:500}
 .field:last-child{border-bottom:0}
 label.q{display:block;font-size:16px;margin:0 0 4px}
 .help{color:var(--muted);font-size:12.5px;margin:0 0 10px}
-input[type=text],input[type=email],select{
+input[type=text],input[type=email],textarea,select{
   width:100%;max-width:420px;padding:8px 2px;font:inherit;color:var(--ink);
   background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0}
 select{border:1px solid var(--line);border-radius:4px;padding:9px 8px}
-input:focus,select:focus{outline:none;border-bottom:2px solid var(--accent)}
-select:focus{border:2px solid var(--accent)}
+textarea{border:1px solid var(--line);border-radius:4px;padding:9px 8px;font:inherit;resize:vertical;min-height:72px}
+input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var(--accent)}
+select:focus,textarea:focus{border:2px solid var(--accent)}
 .radio{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:15px}
 .err-msg{color:var(--err);font-size:12.5px;margin:8px 0 0;display:none}
 .field.invalid .err-msg{display:block}
-.field.invalid input,.field.invalid select{border-color:var(--err)}
+.field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--err)}
 .actions{display:flex;align-items:center;gap:16px;border-top:1px solid var(--line)}
 button{background:var(--accent);color:#fff;border:0;border-radius:4px;
   padding:11px 26px;font:500 15px Roboto,Arial,sans-serif;cursor:pointer}
