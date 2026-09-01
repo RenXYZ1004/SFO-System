@@ -7,8 +7,15 @@ export default function handler(req, res) {
     title: FORM.title,
     description: FORM.description,
     configured: schemaIsConfigured(),
-    fields: FORM.fields.map(({ name, label, type, required, help, options, maxLength }) => ({
-      name, label, type, required, help, options, maxLength,
+    fields: FORM.fields.map((f) => ({
+      name: f.name,
+      label: f.label,
+      type: f.type,
+      required: f.required,
+      help: f.help,
+      options: f.options,
+      maxLength: f.maxLength,
+      section: f.section,
     })),
   });
 }
