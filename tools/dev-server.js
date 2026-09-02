@@ -82,6 +82,10 @@ const server = http.createServer(async (req, res) => {
 
   // --- static -----------------------------------------------------
   if (pathname === '/') pathname = '/index.html';
+  // Match Vercel's cleanUrls: /staff serves staff.html
+  if (!path.extname(pathname) && existsSync(path.join(root, 'public', pathname + '.html'))) {
+    pathname += '.html';
+  }
   const file = path.join(root, 'public', pathname);
   if (!file.startsWith(path.join(root, 'public')) || !existsSync(file)) {
     res.writeHead(404).end('Not found');
