@@ -16,7 +16,8 @@
     "doctor": "node tools/doctor.js",
     "db:init": "node tools/db-init.js",
     "sheet:init": "node tools/sheet-init.js",
-    "replay": "node tools/replay.js"
+    "replay": "node tools/replay.js",
+    "push-env": "node tools/push-env.js"
   },
   "keywords": [],
   "author": "",
