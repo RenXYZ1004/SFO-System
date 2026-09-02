@@ -6,7 +6,7 @@
  *   node tools/get-refresh-token.js
  *
  * Google Cloud Console setup first:
- *   1. APIs & Services -> Library -> enable "Gmail API".
+ *   1. APIs & Services -> Library -> enable "Gmail API" AND "Google Sheets API".
  *   2. OAuth consent screen -> User type INTERNAL  (critical: "Testing"
  *      expires refresh tokens after 7 days).
  *   3. Credentials -> Create OAuth client ID -> Web application.
@@ -19,10 +19,29 @@
 import http from 'node:http';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Read .env.local first, so the client id and secret can live there rather
+// than being typed in (or pasted into a terminal that keeps history).
+const root = fileURLToPath(new URL('..', import.meta.url));
+for (const file of ['.env.local', '.env']) {
+  const p = path.join(root, file);
+  if (!existsSync(p)) continue;
+  for (const line of readFileSync(p, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
+  }
+}
 
 const PORT = 5555;
 const REDIRECT = `http://localhost:${PORT}/oauth2callback`;
-const SCOPE = 'https://mail.google.com/';
+// Gmail (to send) + Sheets (to append the mirror row) on one consent.
+const SCOPE = [
+  'https://mail.google.com/',
+  'https://www.googleapis.com/auth/spreadsheets',
+].join(' ');
 
 const rl = createInterface({ input: stdin, output: stdout });
 const clientId = process.env.GOOGLE_CLIENT_ID || (await rl.question('Client ID: ')).trim();
@@ -97,7 +116,29 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/html' })
      .end('<h2>Done</h2><p>Refresh token issued. You can close this tab and return to the terminal.</p>');
 
-  console.log('\n=== Add these to Vercel -> Settings -> Environment Variables ===\n');
+  // Write it straight into .env.local so the secret never has to be copied
+  // through a terminal or a chat window.
+  try {
+    const envPath = path.join(root, '.env.local');
+    if (existsSync(envPath)) {
+      let env = readFileSync(envPath, 'utf8');
+      const set = (k, v) => {
+        const re = new RegExp('^' + k + '=.*$', 'm');
+        env = re.test(env) ? env.replace(re, k + '=' + v) : env.trimEnd() + '\n' + k + '=' + v + '\n';
+      };
+      set('GOOGLE_CLIENT_ID', clientId);
+      set('GOOGLE_CLIENT_SECRET', clientSecret);
+      set('GOOGLE_REFRESH_TOKEN', tok.refresh_token);
+      writeFileSync(envPath, env);
+      console.log('\nWritten into .env.local — nothing to copy by hand.');
+      console.log('If GMAIL_USER is still blank there, set it to the address you just');
+      console.log('signed in as, then run:  npm run doctor');
+    }
+  } catch (e) {
+    console.error('\nCould not write .env.local automatically:', e.message);
+  }
+
+  console.log('\n=== Same values for Vercel -> Settings -> Environment Variables ===\n');
   console.log(`GOOGLE_CLIENT_ID=${clientId}`);
   console.log(`GOOGLE_CLIENT_SECRET=${clientSecret}`);
   console.log(`GOOGLE_REFRESH_TOKEN=${tok.refresh_token}`);

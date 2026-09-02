@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Staff — Southville Run For A Cause 2026</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/staff.css">
+</head>
+<body class="staff">
+
+<!-- ---------- sign in ---------- -->
+<section id="gate" class="gate">
+  <form class="gate-card" id="gate-form">
+    <p class="gate-kicker">Southville Run For A Cause 2026</p>
+    <h1>Staff sign in</h1>
+    <p class="gate-sub">This page shows runners' personal details. Do not share the passcode.</p>
+
+    <label class="gate-label" for="pw">Staff passcode</label>
+    <input type="password" id="pw" autocomplete="current-password" required>
+    <p class="gate-err" id="gate-err" hidden></p>
+
+    <button type="submit" class="btn" id="gate-btn">
+      <span class="btn-label">Sign in</span>
+      <span class="spinner" aria-hidden="true"></span>
+    </button>
+  </form>
+</section>
+
+<!-- ---------- dashboard ---------- -->
+<div id="app" hidden>
+
+  <header class="staff-bar">
+    <div class="staff-bar-inner">
+      <div>
+        <p class="staff-kicker">Southville Run For A Cause 2026</p>
+        <h1>Registrations</h1>
+      </div>
+      <button type="button" class="btn-ghost" id="signout">Sign out</button>
+    </div>
+  </header>
+
+  <main class="staff-wrap">
+
+    <div class="stats" id="stats"></div>
+
+    <div class="search-card">
+      <label class="search-label" for="q">Find a runner</label>
+      <div class="search-row">
+        <input type="search" id="q" placeholder="Reference, name, email or contact number"
+               autocomplete="off" spellcheck="false">
+        <button type="button" class="btn-ghost" id="clear">Clear</button>
+      </div>
+      <p class="search-hint">
+        Type a reference such as <code>SFO-4K7M2X</code> — the prefix, dashes and
+        capitals are all optional.
+      </p>
+    </div>
+
+    <div id="notice" class="banner" hidden></div>
+
+    <div class="table-card">
+      <div class="table-head">
+        <span id="count">—</span>
+        <button type="button" class="btn-ghost" id="refresh">Refresh</button>
+      </div>
+      <div class="table-scroll">
+        <table class="reg-table">
+          <thead>
+            <tr>
+              <th>Reference</th><th>Name</th><th>Category</th>
+              <th>Shirt</th><th>Registered</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="empty" hidden>No registrations match that search.</p>
+    </div>
+
+  </main>
+</div>
+
+<!-- ---------- one runner ---------- -->
+<dialog id="detail" class="modal detail-modal" aria-labelledby="detail-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="detail-title">Registration</h2>
+      <p class="modal-sub" id="detail-ref"></p>
+    </div>
+    <button type="button" class="modal-close" id="detail-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+           stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="modal-body" id="detail-body"></div>
+</dialog>
+
+<script src="/staff.js" type="module"></script>
+</body>
+</html>

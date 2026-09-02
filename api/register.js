@@ -1,9 +1,9 @@
-import { randomBytes } from 'node:crypto';
-import { FORM, validate, schemaIsConfigured } from '../lib/form-schema.js';
-import { submitToGoogleForm } from '../lib/google-form.js';
+import { FORM, validate } from '../lib/form-schema.js';
+import { appendRegistration } from '../lib/sheets.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
 import { deleteBlob } from './blob-upload.js';
+import { dbConfigured, saveRegistration, markSheetSynced, markEmailSent } from '../lib/db.js';
 
 const APP_NAME = process.env.APP_NAME || 'Southville Run For A Cause 2026';
 
@@ -39,14 +39,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, ref: 'IGNORED' });
   }
 
-  if (!schemaIsConfigured()) {
-    return res.status(503).json({
-      ok: false,
-      error:
-        'The form is not configured yet: lib/form-schema.js still holds placeholder entry ids. Run tools/fetch-form-schema.js.',
-    });
-  }
-
   const errors = validate(body);
   if (errors.length) {
     return res.status(422).json({ ok: false, errors });
@@ -58,13 +50,32 @@ export default async function handler(req, res) {
     values[f.name] = typeof v === 'string' ? v.trim() : '';
   }
 
-  // --- 1. record the registration -----------------------------------
-  const recorded = await submitToGoogleForm(values);
-  if (!recorded.ok) {
-    console.error('[register] form submit failed:', recorded.error);
+  const when = new Date().toLocaleString('en-PH', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: 'Asia/Manila',
+  });
+  const answers = FORM.fields.map((f) => [f.label, values[f.name]]);
+  const labelled = Object.fromEntries(answers);
 
-    // The proof-of-payment upload happened before this point, so it is now
-    // orphaned in Blob storage. Remove it rather than leaving it to rot.
+  // --- 1. record the registration — the database decides ------------
+  // Postgres is the source of truth. If this fails, nobody is registered,
+  // so nothing is emailed and the uploaded receipt is cleaned up.
+  if (!dbConfigured()) {
+    console.error('[register] no DATABASE_URL configured');
+    return res.status(503).json({
+      ok: false,
+      error: 'Registrations are not open yet. Please contact the organisers.',
+    });
+  }
+
+  let ref;
+  try {
+    ({ reference: ref } = await saveRegistration({ values, labelled, ip }));
+  } catch (err) {
+    console.error('[register] database write failed:', err.message);
+
+    // The receipt was uploaded before this point, so it is now orphaned.
     for (const f of FORM.fields) {
       if (f.type === 'file' && values[f.name]) {
         const gone = await deleteBlob(values[f.name]);
@@ -75,19 +86,17 @@ export default async function handler(req, res) {
     return res.status(502).json({
       ok: false,
       error: 'We could not record your registration, so no email was sent. Please try again.',
-      detail: recorded.error,
+      detail: err.message,
       uploadCleared: true,
     });
   }
 
-  // --- 2. only now, send the confirmation ----------------------------
-  const ref = randomBytes(4).toString('hex').toUpperCase();
-  const when = new Date().toLocaleString('en-PH', {
-    dateStyle: 'long',
-    timeStyle: 'short',
-    timeZone: 'Asia/Manila',
-  });
-  const answers = FORM.fields.map((f) => [f.label, values[f.name]]);
+  // --- 2. mirror into the Google Sheet — best effort ----------------
+  // The runner is already registered, so a Sheet failure must never turn into
+  // an error for them. It is recorded on the row and can be replayed.
+  appendRegistration({ reference: ref, labelled })
+    .then((r) => markSheetSynced(ref, r.ok, r.error).catch(() => {}))
+    .catch((err) => markSheetSynced(ref, false, err.message).catch(() => {}));
 
   const to = values[FORM.emailField];
   const name = values[FORM.nameField] || to;
@@ -111,10 +120,12 @@ export default async function handler(req, res) {
       html: confirmationHtml({ answers, appName: APP_NAME, ref, when }),
       text: confirmationText({ answers, appName: APP_NAME, ref, when }),
     });
+    markEmailSent(ref, true).catch(() => {});
     return res.status(200).json({ ok: true, ref, mailSent: true });
   } catch (err) {
     const explained = explainMailError(err);
     console.error('[register] mail failed:', explained);
+    markEmailSent(ref, false, explained).catch(() => {});
     // The registration is already in the Sheet — never report it as lost.
     return res.status(200).json({
       ok: true,

@@ -12,13 +12,17 @@
     "token": "node tools/get-refresh-token.js",
     "schema": "node tools/fetch-form-schema.js",
     "test:smtp": "node tools/test-smtp.js",
-    "import": "node tools/import-form-source.js"
+    "import": "node tools/import-form-source.js",
+    "doctor": "node tools/doctor.js",
+    "db:init": "node tools/db-init.js",
+    "sheet:init": "node tools/sheet-init.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.8.0",
     "nodemailer": "^9.1.0"
   },

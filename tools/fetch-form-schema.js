@@ -47,7 +47,7 @@ async function main() {
   printSummary(parsed);
   writeFileSync(
     new URL('../lib/form-schema.js', import.meta.url),
-    buildSchemaFile({ responseUrl, ...parsed })
+    buildSchemaFile(parsed)
   );
   console.log('\nWrote lib/form-schema.js — the web form now mirrors the Google Form.');
   return 0;
