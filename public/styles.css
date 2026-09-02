@@ -1,5 +1,5 @@
 /* ============================================================
-   Fun Run Registration — light + dark, mobile first
+   Southville Run For A Cause 2026 — light + dark, mobile first
    ============================================================ */
 :root{
   --brand-1:#ff6a3d;
@@ -21,6 +21,9 @@
   --err:#c62f22;
   --err-bg:#fdecea;
   --err-line:#f3bdb6;
+  --info-bg:#eef4fd;
+  --info-line:#c5d8f2;
+  --info-ink:#1c4e8a;
   --warn-bg:#fdf4e3;
   --warn-line:#f0dcb4;
   --warn-ink:#7d5a15;
@@ -49,6 +52,9 @@
     --err:#ff9c90;
     --err-bg:#331916;
     --err-line:#5c2a24;
+    --info-bg:#152130;
+    --info-line:#27405c;
+    --info-ink:#9dc4f0;
     --warn-bg:#2f2716;
     --warn-line:#4d4023;
     --warn-ink:#f0cd85;
@@ -94,10 +100,53 @@ body{
 /* ---------- layout ---------- */
 .wrap{max-width:680px;margin:0 auto;padding:0 16px 40px}
 
+/* ---------- welcome ---------- */
+.welcome{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:24px 24px 22px;margin:-26px 0 16px;
+  position:relative;z-index:2;
+}
+.welcome-h{
+  margin:0 0 12px;font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--accent);
+}
+.welcome p{margin:0 0 11px;color:var(--ink-2);font-size:15px;line-height:1.65}
+.welcome p:last-child{margin-bottom:0}
+.welcome strong{color:var(--ink);font-weight:650}
+.cause{
+  background:var(--accent-soft);border-left:3px solid var(--accent);
+  border-radius:0 9px 9px 0;padding:12px 14px;margin-top:14px !important;
+}
+
+/* ---------- before you register ---------- */
+.prep .step{background:var(--warn-bg);color:var(--warn-ink);font-size:15px}
+.prep-lead{margin:14px 0 12px;color:var(--ink-2);font-size:14.5px}
+.checklist{
+  list-style:none;counter-reset:c;margin:0 0 16px;padding:0;
+}
+.checklist li{
+  counter-increment:c;position:relative;padding:0 0 0 34px;margin:0 0 11px;
+  color:var(--ink-2);font-size:14.5px;line-height:1.6;
+}
+.checklist li::before{
+  content:counter(c);position:absolute;left:0;top:1px;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);
+  font-size:12px;font-weight:700;display:grid;place-items:center;
+}
+.checklist strong{color:var(--ink);font-weight:650}
+.contact{
+  margin:14px 0 4px;font-size:13.5px;color:var(--muted);line-height:1.7;
+  word-break:break-word;
+}
+.notice.info{
+  border-color:var(--info-line);background:var(--info-bg);color:var(--info-ink);
+  margin:0;
+}
+
 /* ---------- progress ---------- */
 .progress-card{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  box-shadow:var(--shadow);padding:14px 16px;margin:-26px 0 20px;position:relative;z-index:2;
+  box-shadow:var(--shadow);padding:14px 16px;margin:0 0 16px;
 }
 .progress-top{
   display:flex;justify-content:space-between;align-items:baseline;gap:12px;
@@ -170,6 +219,46 @@ legend{padding:0}
   background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;
 }
 .chip input:focus-visible + span{box-shadow:0 0 0 3px var(--accent-ring)}
+
+/* file upload */
+.file-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.drop{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:22px 16px;border:1.5px dashed var(--line-2);border-radius:11px;
+  background:var(--bg);cursor:pointer;text-align:center;
+  transition:border-color .15s,background .15s;
+}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.file-input:focus-visible + .drop{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+.drop-icon{
+  font-size:19px;line-height:1;color:var(--accent);
+  width:34px;height:34px;border-radius:50%;background:var(--accent-soft);
+  display:grid;place-items:center;margin-bottom:5px;
+}
+.drop-main{font-size:14.5px;font-weight:600;color:var(--ink)}
+.drop-sub{font-size:12.5px;color:var(--muted)}
+
+.upload{border:1px solid var(--line-2);border-radius:11px;padding:12px 13px;background:var(--card)}
+.upload-row{display:flex;align-items:center;gap:12px}
+.upload-thumb{
+  flex:0 0 auto;width:42px;height:42px;border-radius:8px;border:1px solid var(--line);
+  background:var(--bg) center/cover no-repeat;
+  display:grid;place-items:center;font-size:10.5px;font-weight:700;color:var(--muted);
+}
+.upload-meta{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.upload-name{
+  font-size:14px;font-weight:600;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.upload-status{font-size:12.5px;color:var(--muted)}
+.upload-status.good{color:var(--ok);font-weight:600}
+.upload-status.bad{color:var(--err);font-weight:600}
+.upload-track{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:10px}
+.upload-fill{
+  height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+  transition:width .3s ease;
+}
 
 /* validation */
 .err-msg{

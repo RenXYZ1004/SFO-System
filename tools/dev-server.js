@@ -86,14 +86,27 @@ const server = http.createServer(async (req, res) => {
   res.end(await readFile(file));
 });
 
+/**
+ * Mirrors how Vercel exposes the body: JSON and form-encoded requests arrive
+ * parsed, anything else (an image or PDF upload) arrives as a raw Buffer.
+ */
 function readBody(req) {
   return new Promise((resolve) => {
-    let raw = '';
-    req.on('data', (c) => (raw += c));
+    const chunks = [];
+    req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
     req.on('end', () => {
-      if (!raw) return resolve({});
-      try { resolve(JSON.parse(raw)); }
-      catch { resolve(Object.fromEntries(new URLSearchParams(raw))); }
+      const buf = Buffer.concat(chunks);
+      if (!buf.length) return resolve({});
+
+      const ct = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+      if (ct === 'application/json') {
+        try { return resolve(JSON.parse(buf.toString('utf8'))); }
+        catch { return resolve({}); }
+      }
+      if (ct === 'application/x-www-form-urlencoded') {
+        return resolve(Object.fromEntries(new URLSearchParams(buf.toString('utf8'))));
+      }
+      resolve(buf);
     });
   });
 }

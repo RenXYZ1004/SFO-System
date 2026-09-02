@@ -113,6 +113,32 @@ function renderField(f) {
                  aria-describedby="${esc(describedBy)}"></textarea>`);
   }
 
+  // File upload: the picked file goes to Vercel Blob, and the resulting URL
+  // is what actually travels to the Google Form in the hidden input.
+  if (f.type === 'file') {
+    return field(f, id, star, help, describedBy, `
+      <input type="hidden" name="${esc(f.name)}" id="${id}" value="">
+      <input type="file" id="${id}_picker" class="file-input"
+             accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+             aria-describedby="${esc(describedBy)}">
+      <label class="drop" for="${id}_picker" data-drop="${esc(f.name)}">
+        <span class="drop-icon" aria-hidden="true">&#8679;</span>
+        <span class="drop-main">Choose a file or drag it here</span>
+        <span class="drop-sub">JPG, PNG, WEBP, HEIC or PDF · up to 4&nbsp;MB</span>
+      </label>
+      <div class="upload" id="${id}_state" hidden>
+        <div class="upload-row">
+          <span class="upload-thumb" id="${id}_thumb" aria-hidden="true"></span>
+          <span class="upload-meta">
+            <span class="upload-name" id="${id}_name"></span>
+            <span class="upload-status" id="${id}_status"></span>
+          </span>
+          <button type="button" class="btn-ghost" id="${id}_remove">Remove</button>
+        </div>
+        <div class="upload-track"><div class="upload-fill" id="${id}_bar"></div></div>
+      </div>`);
+  }
+
   const type = f.type === 'email' ? 'email' : (isPhone(f) ? 'tel' : 'text');
   const max = f.maxLength ? ` maxlength="${f.maxLength}"` : '';
   const mode = f.type === 'email' ? 'email' : (isPhone(f) ? 'tel' : 'text');
@@ -143,6 +169,10 @@ function values() {
 /** Mirrors the server rules so people get feedback before a round-trip. */
 function checkField(f, v) {
   const value = (v || '').trim();
+  if (f.type === 'file') {
+    if (!value) return f.required ? 'Please upload your proof of payment' : '';
+    return /^https:\/\/\S+$/.test(value) ? '' : 'The upload did not complete — please try again';
+  }
   if (f.required && !value) return 'This question is required';
   if (!value) return '';
   if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
@@ -226,6 +256,8 @@ function wireEvents() {
   });
   form.addEventListener('change', updateProgress);
 
+  SCHEMA.fields.filter((f) => f.type === 'file').forEach(wireUpload);
+
   form.addEventListener('submit', onSubmit);
 
   $('copy').addEventListener('click', async () => {
@@ -241,6 +273,7 @@ function wireEvents() {
   $('again').addEventListener('click', (e) => {
     e.preventDefault();
     form.reset();
+    resetUploads();
     document.querySelectorAll('.field').forEach((el) => el.classList.remove('invalid', 'done'));
     document.querySelectorAll('.err-msg').forEach((p) => (p.textContent = ''));
     $('done').hidden = true;
@@ -249,6 +282,153 @@ function wireEvents() {
     updateProgress();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+}
+
+/* ---------- file upload ---------- */
+
+const MAX_UPLOAD = 4 * 1024 * 1024;
+const kb = (n) => (n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+// Each file field registers a reset callback so the whole form can be cleared.
+const uploadResetters = [];
+function resetUploads() {
+  uploadResetters.forEach((fn) => fn());
+}
+
+/**
+ * Shrinks a large photo in the browser so a phone camera shot does not blow
+ * past the request limit. Returns the original if it is already small,
+ * cannot be decoded, or is not an image.
+ */
+async function downscale(file) {
+  if (!file.type.startsWith('image/') || file.type === 'image/heic' || file.type === 'image/heif') {
+    return file;
+  }
+  if (file.size < 900 * 1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const max = 1600;
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale);
+    const h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    bmp.close?.();
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.82));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
+function wireUpload(f) {
+  const id = `f_${f.name}`;
+  const hidden = $(id);
+  const picker = $(`${id}_picker`);
+  const drop = document.querySelector(`[data-drop="${cssEsc(f.name)}"]`);
+  const state = $(`${id}_state`);
+  const bar = $(`${id}_bar`);
+  const status = $(`${id}_status`);
+  const nameEl = $(`${id}_name`);
+  const thumb = $(`${id}_thumb`);
+  if (!hidden || !picker) return;
+
+  let objectUrl = null;
+
+  const reset = () => {
+    hidden.value = '';
+    picker.value = '';
+    state.hidden = true;
+    drop.hidden = false;
+    bar.style.width = '0%';
+    if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+    thumb.style.backgroundImage = '';
+    thumb.textContent = '';
+    updateProgress();
+  };
+
+  uploadResetters.push(reset);
+
+  $(`${id}_remove`).addEventListener('click', () => {
+    reset();
+    setFieldState(f.name, '', '');
+  });
+
+  async function handle(file) {
+    if (!file) return;
+
+    if (file.size > MAX_UPLOAD * 3) {
+      setFieldState(f.name, `That file is ${kb(file.size)} — too large to upload.`, '');
+      return;
+    }
+
+    drop.hidden = true;
+    state.hidden = false;
+    nameEl.textContent = file.name;
+    status.textContent = 'Preparing…';
+    status.className = 'upload-status';
+    bar.style.width = '8%';
+    setFieldState(f.name, '', '');
+
+    const sending = await downscale(file);
+
+    if (sending.type.startsWith('image/')) {
+      objectUrl = URL.createObjectURL(sending);
+      thumb.style.backgroundImage = `url(${objectUrl})`;
+    } else {
+      thumb.textContent = 'PDF';
+    }
+
+    if (sending.size > MAX_UPLOAD) {
+      status.textContent = `Too large (${kb(sending.size)}). Please use a smaller file.`;
+      status.className = 'upload-status bad';
+      bar.style.width = '0%';
+      setFieldState(f.name, 'That file is too large. Please keep it under 4 MB.', '');
+      return;
+    }
+
+    status.textContent = `Uploading… ${kb(sending.size)}`;
+    bar.style.width = '35%';
+
+    try {
+      const res = await fetch('/api/blob-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': sending.type, 'X-Filename': sending.name },
+        body: sending,
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        status.textContent = data.error || 'Upload failed. Please try again.';
+        status.className = 'upload-status bad';
+        bar.style.width = '0%';
+        setFieldState(f.name, data.error || 'Upload failed. Please try again.', '');
+        return;
+      }
+
+      hidden.value = data.url;
+      bar.style.width = '100%';
+      status.textContent = `Uploaded · ${kb(data.size ?? sending.size)}`;
+      status.className = 'upload-status good';
+      setFieldState(f.name, '', data.url);
+      updateProgress();
+    } catch {
+      status.textContent = 'Network error. Please try again.';
+      status.className = 'upload-status bad';
+      bar.style.width = '0%';
+      setFieldState(f.name, 'Network error while uploading. Please try again.', '');
+    }
+  }
+
+  picker.addEventListener('change', () => handle(picker.files?.[0]));
+
+  ['dragenter', 'dragover'].forEach((ev) =>
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) =>
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', (e) => handle(e.dataTransfer?.files?.[0]));
 }
 
 function banner(html, kind = '') {
@@ -314,7 +494,9 @@ async function onSubmit(e) {
           .map((m) => `<li>${esc(m)}</li>`).join('') + '</ul>');
       focusFirstInvalid();
     } else {
-      banner(esc(data.error || 'Something went wrong. Please try again.'));
+      banner(esc(data.error || 'Something went wrong. Please try again.') +
+        (data.uploadCleared ? ' Your file was removed — please attach it again.' : ''));
+      if (data.uploadCleared) resetUploads();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     return;

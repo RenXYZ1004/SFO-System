@@ -3,8 +3,9 @@ import { FORM, validate, schemaIsConfigured } from '../lib/form-schema.js';
 import { submitToGoogleForm } from '../lib/google-form.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
+import { deleteBlob } from './blob-upload.js';
 
-const APP_NAME = process.env.APP_NAME || 'Fun Run Registration';
+const APP_NAME = process.env.APP_NAME || 'Southville Run For A Cause 2026';
 
 // Very small in-memory rate limit. Serverless instances are recycled, so this
 // only blunts bursts against a warm instance — it is not a hard guarantee.
@@ -61,10 +62,21 @@ export default async function handler(req, res) {
   const recorded = await submitToGoogleForm(values);
   if (!recorded.ok) {
     console.error('[register] form submit failed:', recorded.error);
+
+    // The proof-of-payment upload happened before this point, so it is now
+    // orphaned in Blob storage. Remove it rather than leaving it to rot.
+    for (const f of FORM.fields) {
+      if (f.type === 'file' && values[f.name]) {
+        const gone = await deleteBlob(values[f.name]);
+        console.log(`[register] orphaned upload ${gone ? 'removed' : 'left behind'}: ${values[f.name]}`);
+      }
+    }
+
     return res.status(502).json({
       ok: false,
       error: 'We could not record your registration, so no email was sent. Please try again.',
       detail: recorded.error,
+      uploadCleared: true,
     });
   }
 
