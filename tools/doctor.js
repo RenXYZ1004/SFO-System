@@ -113,14 +113,15 @@ if (!dbConfigured()) {
 const needsBlob = FORM.fields.some((f) => f.type === 'file');
 if (!needsBlob) {
   add('Blob storage', OK, 'no file-upload field, so none needed');
-} else if (!process.env.BLOB_READ_WRITE_TOKEN) {
+} else if (!(await import('../lib/blob-token.js')).blobConfigured()) {
   add('Blob storage', BAD, 'BLOB_READ_WRITE_TOKEN is not set',
     'Vercel dashboard -> Storage -> Create -> Blob -> connect to this project,\n' +
     '     then copy the token into .env.local for local runs.');
 } else {
   try {
     const { list } = await import('@vercel/blob');
-    const out = await list({ limit: 1 });
+    const { blobToken } = await import('../lib/blob-token.js');
+    const out = await list({ limit: 1, token: blobToken() });
     add('Blob storage', OK, `store reachable (${out.blobs.length ? 'has files' : 'empty'})`);
   } catch (err) {
     add('Blob storage', BAD, `token set but the store rejected it: ${err.message}`,

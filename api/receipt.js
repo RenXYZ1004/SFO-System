@@ -1,5 +1,6 @@
 import { get } from '@vercel/blob';
 import { requireStaff } from '../lib/staff-auth.js';
+import { blobToken, blobConfigured } from '../lib/blob-token.js';
 
 /**
  * Serves one proof-of-payment file to signed-in staff.
@@ -19,7 +20,7 @@ export default async function handler(req, res) {
   }
   if (!requireStaff(req, res)) return;
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!blobConfigured()) {
     return res.status(503).json({ ok: false, error: 'File storage is not configured.' });
   }
 
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const found = await get(pathname, { access: 'private' });
+    const found = await get(pathname, { access: 'private', token: blobToken() });
     if (!found) return res.status(404).json({ ok: false, error: 'That receipt no longer exists.' });
 
     const type = found.blob?.contentType || 'application/octet-stream';

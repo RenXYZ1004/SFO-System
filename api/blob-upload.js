@@ -1,4 +1,5 @@
 import { put, del } from '@vercel/blob';
+import { blobToken, blobConfigured, blobTokenCandidates } from '../lib/blob-token.js';
 
 /**
  * Receives one proof-of-payment file and stores it in Vercel Blob.
@@ -82,8 +83,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'POST only' });
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    console.error('[blob-upload] BLOB_READ_WRITE_TOKEN is not set');
+  if (!blobConfigured()) {
+    console.error('[blob-upload] no Vercel Blob token found. Env vars that look ' +
+      'blob-related: ' + (blobTokenCandidates().join(', ') || 'none') +
+      '. Connect a Blob store to this project, then redeploy.');
     return res.status(503).json({
       ok: false,
       error: 'File uploads are not configured yet. Please contact the organisers.',
@@ -160,7 +163,7 @@ let knownAccess = null;
 export function __resetAccessCache() { knownAccess = null; }
 
 async function store(pathname, buf, contentType) {
-  const opts = { contentType, addRandomSuffix: true, cacheControlMaxAge: 31536000 };
+  const opts = { contentType, addRandomSuffix: true, cacheControlMaxAge: 31536000, token: blobToken() };
   const first = knownAccess || process.env.BLOB_ACCESS || 'public';
   const order = first === 'private' ? ['private', 'public'] : ['public', 'private'];
 
@@ -195,9 +198,9 @@ export function pathnameFrom(value) {
 
 export async function deleteBlob(value) {
   const pathname = pathnameFrom(value);
-  if (!pathname || !process.env.BLOB_READ_WRITE_TOKEN) return false;
+  if (!pathname || !blobConfigured()) return false;
   try {
-    await del(pathname);
+    await del(pathname, { token: blobToken() });
     return true;
   } catch (err) {
     console.error('[blob-upload] cleanup failed:', err.message);
