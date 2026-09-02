@@ -99,6 +99,44 @@ body{
   padding:40px 20px 58px;overflow:hidden;text-align:center;
 }
 .hero-inner{max-width:700px;margin:0 auto;position:relative;z-index:1}
+/* ---------- partner logos ---------- */
+.logo-row{
+  display:flex;justify-content:center;align-items:center;
+  gap:clamp(12px,4vw,26px);margin:0 0 24px;
+}
+.logo-tile{
+  position:relative;
+  width:clamp(64px,16vw,94px);aspect-ratio:1;border-radius:50%;
+  background:#fff;display:grid;place-items:center;padding:10px;
+  box-shadow:
+    0 0 0 2px rgba(58,18,89,.16),
+    0 8px 20px -6px rgba(58,18,89,.45),
+    0 0 20px rgba(58,18,89,.30);
+  animation:logoGlow 3.6s ease-in-out infinite;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+/* Stagger the pulse so the three breathe in sequence, not in lockstep. */
+.logo-tile:nth-child(2){animation-delay:.6s}
+.logo-tile:nth-child(3){animation-delay:1.2s}
+.logo-tile:hover{transform:translateY(-4px) scale(1.05)}
+.logo-tile img{
+  width:100%;height:100%;object-fit:contain;display:block;
+}
+@keyframes logoGlow{
+  0%,100%{
+    box-shadow:
+      0 0 0 2px rgba(58,18,89,.16),
+      0 8px 20px -6px rgba(58,18,89,.40),
+      0 0 18px rgba(58,18,89,.26);
+  }
+  50%{
+    box-shadow:
+      0 0 0 2px rgba(58,18,89,.34),
+      0 10px 26px -6px rgba(58,18,89,.58),
+      0 0 36px rgba(58,18,89,.52);
+  }
+}
+
 .kicker{
   margin:0 0 14px;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;
   font-weight:800;color:var(--purple);opacity:.72;
@@ -152,8 +190,43 @@ body{
   clip-path:ellipse(72% 100% at 50% 100%);
 }
 
+/* ---------- compact header (registration view) ---------- */
+.hero-compact{padding:20px 20px 30px}
+.wordmark-sm{
+  margin:0;font-weight:900;text-transform:uppercase;letter-spacing:-.01em;
+  font-size:clamp(17px,4.4vw,23px);line-height:1.15;
+}
+.wordmark-sm .wm-pink{-webkit-text-stroke:.045em var(--purple);paint-order:stroke fill}
+.compact-meta{
+  margin:7px 0 0;font-size:12.5px;font-weight:600;color:var(--purple);opacity:.78;
+}
+
 /* ---------- layout ---------- */
 .wrap{max-width:680px;margin:0 auto;padding:0 16px 40px}
+
+/* ---------- proceed (intro -> form) ---------- */
+.proceed-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:20px;text-align:center;
+}
+.btn-arrow{display:inline-flex;transition:transform .15s}
+.btn:hover .btn-arrow{transform:translateX(3px)}
+
+/* ---------- back link + view heading ---------- */
+.back-link{
+  display:inline-flex;align-items:center;gap:7px;
+  background:none;border:0;padding:6px 2px;margin:16px 0 4px;
+  color:var(--accent);font:600 14px var(--font);cursor:pointer;
+}
+.back-link:hover{text-decoration:underline}
+.back-link:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-ring);border-radius:6px}
+.view-h{
+  margin:4px 0 14px;font-size:24px;font-weight:800;letter-spacing:-.02em;
+}
+.view-h:focus{outline:none}
+.lede-form{
+  margin:0 0 16px;color:var(--ink-2);font-size:14.5px;line-height:1.6;
+}
 
 /* ---------- welcome ---------- */
 .welcome{
@@ -171,6 +244,9 @@ body{
   background:var(--accent-soft);border-left:3px solid var(--accent);
   border-radius:0 9px 9px 0;padding:12px 14px;margin-top:14px !important;
 }
+/* Whichever block comes first sits over the hero wave — not both. */
+#intro-notice:not([hidden]){margin-top:-26px;position:relative;z-index:2}
+#intro-notice:not([hidden]) + .welcome{margin-top:0}
 
 /* ---------- before you register ---------- */
 .prep .step{background:var(--warn-bg);color:var(--warn-ink);font-size:15px}
@@ -425,4 +501,7 @@ a:hover{text-decoration:underline}
   .spinner{animation:none}
   .fill{transition:none}
   .done-tick{animation:none;stroke-dashoffset:0}
+  /* Keep the glow, drop the pulse. */
+  .logo-tile{animation:none;transition:none}
+  .logo-tile:hover{transform:none}
 }

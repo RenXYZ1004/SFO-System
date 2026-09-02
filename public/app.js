@@ -29,17 +29,56 @@ async function init() {
   document.title = SCHEMA.title;
 
   if (!SCHEMA.configured) {
-    banner(
+    const msg =
       '<strong>Preview mode.</strong> This form is not connected to Google Forms yet — ' +
       'the field ids in <code>lib/form-schema.js</code> are placeholders, so submissions ' +
-      'are rejected. Run <code>npm run schema</code> or <code>npm run import</code> to connect it.',
-      'warn'
-    );
+      'are rejected. Run <code>npm run schema</code> or <code>npm run import</code> to connect it.';
+    banner(msg, 'warn');
+    const n = $('intro-notice');
+    if (n) { n.innerHTML = msg; n.hidden = false; }
   }
 
   renderSections();
   wireEvents();
+  wireViews();
   updateProgress();
+
+  // Deep link straight to the form, and honour the back button.
+  showView(location.hash === '#register' ? 'form' : 'intro', { silent: true });
+}
+
+/* ---------- views ---------- */
+
+/**
+ * The page is two screens: the event intro, and the registration itself.
+ * Switching is client-side so there is only one deploy and one schema fetch.
+ */
+function showView(name, { silent = false } = {}) {
+  const intro = $('view-intro');
+  const form = $('view-form');
+  if (!intro || !form) return;
+
+  const toForm = name === 'form';
+  intro.hidden = toForm;
+  form.hidden = !toForm;
+
+  if (!silent) {
+    const hash = toForm ? '#register' : '#';
+    if (location.hash !== hash) history.pushState({ view: name }, '', hash);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Move focus so keyboard and screen-reader users land in the new screen.
+    (toForm ? $('form-h') : $('proceed'))?.focus({ preventScroll: true });
+  } else {
+    window.scrollTo({ top: 0 });
+  }
+}
+
+function wireViews() {
+  $('proceed')?.addEventListener('click', () => showView('form'));
+  $('back')?.addEventListener('click', () => showView('intro'));
+  window.addEventListener('popstate', () => {
+    showView(location.hash === '#register' ? 'form' : 'intro', { silent: true });
+  });
 }
 
 /* ---------- rendering ---------- */

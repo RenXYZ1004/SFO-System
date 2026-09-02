@@ -25,8 +25,13 @@ for (const file of ['.env.local', '.env']) {
   }
 }
 
-const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
-               '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const MIME = {
+  '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
+  '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif',
+  '.woff2': 'font/woff2', '.pdf': 'application/pdf',
+};
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
