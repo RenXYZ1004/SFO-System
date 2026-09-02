@@ -41,6 +41,7 @@ async function init() {
   renderSections();
   wireEvents();
   wireViews();
+  wireCauses();
   updateProgress();
 
   // Deep link straight to the form, and honour the back button.
@@ -71,6 +72,45 @@ function showView(name, { silent = false } = {}) {
   } else {
     window.scrollTo({ top: 0 });
   }
+}
+
+/* ---------- "where does it go?" modal ---------- */
+
+/**
+ * Native <dialog> gives us the focus trap, Escape handling and focus restore
+ * for free, so this only has to cover opening, the backdrop click, and the
+ * placeholder for slots whose photo has not been added yet.
+ */
+function wireCauses() {
+  const modal = $('causes-modal');
+  const open = $('causes-open');
+  if (!modal || !open) return;
+
+  // A slot with no file yet keeps its place and says so, rather than
+  // rendering a broken-image icon.
+  modal.querySelectorAll('.shot img').forEach((img) => {
+    const markMissing = () => img.closest('.shot')?.classList.add('missing');
+    img.addEventListener('error', markMissing);
+    // Cached failures can land before the listener is attached.
+    if (img.complete && img.naturalWidth === 0) markMissing();
+  });
+
+  open.addEventListener('click', () => {
+    if (typeof modal.showModal === 'function') modal.showModal();
+    else modal.setAttribute('open', '');   // very old browsers: inline fallback
+  });
+
+  $('causes-close')?.addEventListener('click', () => modal.close());
+
+  // Clicking the backdrop closes; clicking the panel must not.
+  modal.addEventListener('click', (e) => {
+    if (e.target !== modal) return;        // clicks inside bubble from children
+    const r = modal.getBoundingClientRect();
+    const inside =
+      e.clientX >= r.left && e.clientX <= r.right &&
+      e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) modal.close();
+  });
 }
 
 function wireViews() {

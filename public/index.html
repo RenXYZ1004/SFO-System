@@ -87,7 +87,89 @@
         All proceeds will support the <strong>Pawikan Conservation Center</strong> in Bataan
         and the <strong>Bindoy Community</strong> in Dumaguete, helping learners with special needs.
       </p>
+
+      <button type="button" class="cause-btn" id="causes-open"
+              aria-haspopup="dialog" aria-controls="causes-modal">
+        <span class="cause-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.8 5.6a5.1 5.1 0 0 0-7.2 0L12 7.2l-1.6-1.6a5.1 5.1 0 0 0-7.2 7.2l8.8 8.8 8.8-8.8a5.1 5.1 0 0 0 0-7.2Z"/>
+          </svg>
+        </span>
+        <span>Where does Run For A Cause go?</span>
+        <span class="cause-btn-chev" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+               stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h13M12.5 6l6 6-6 6"/>
+          </svg>
+        </span>
+      </button>
     </section>
+
+    <!-- ---------- where the proceeds go ---------- -->
+    <dialog id="causes-modal" class="modal" aria-labelledby="causes-title">
+      <div class="modal-head">
+        <div>
+          <h2 id="causes-title">Where your registration goes</h2>
+          <p class="modal-sub">Every peso raised supports these two communities.</p>
+        </div>
+        <button type="button" class="modal-close" id="causes-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <section class="cause-group">
+          <h3 class="cause-name">
+            Pawikan Conservation Center
+            <span class="cause-place">Bataan</span>
+          </h3>
+          <div class="shots">
+            <figure class="shot" style="--i:0">
+              <img src="/causes/pawikan-1.jpg" alt="Pawikan Conservation Center, Bataan" loading="lazy">
+              <figcaption>Pawikan Conservation Center</figcaption>
+            </figure>
+            <figure class="shot" style="--i:1">
+              <img src="/causes/pawikan-2.jpg" alt="Pawikan Conservation Center, Bataan" loading="lazy">
+              <figcaption>Pawikan Conservation Center</figcaption>
+            </figure>
+            <figure class="shot" style="--i:2">
+              <img src="/causes/pawikan-3.jpg" alt="Pawikan Conservation Center, Bataan" loading="lazy">
+              <figcaption>Pawikan Conservation Center</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="cause-group">
+          <h3 class="cause-name">
+            Bindoy Community
+            <span class="cause-place">Dumaguete</span>
+          </h3>
+          <div class="shots">
+            <figure class="shot" style="--i:3">
+              <img src="/causes/bindoy-1.jpg" alt="Bindoy Community, Dumaguete" loading="lazy">
+              <figcaption>Bindoy Community</figcaption>
+            </figure>
+            <figure class="shot" style="--i:4">
+              <img src="/causes/bindoy-2.jpg" alt="Bindoy Community, Dumaguete" loading="lazy">
+              <figcaption>Bindoy Community</figcaption>
+            </figure>
+            <figure class="shot" style="--i:5">
+              <img src="/causes/bindoy-3.jpg" alt="Bindoy Community, Dumaguete" loading="lazy">
+              <figcaption>Bindoy Community</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <p class="modal-foot">
+          Proceeds help learners with special needs in both communities.
+        </p>
+      </div>
+    </dialog>
 
     <!-- before you register -->
     <section class="section prep" aria-labelledby="prep-h">
