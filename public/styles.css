@@ -101,39 +101,38 @@ body{
 .hero-inner{max-width:700px;margin:0 auto;position:relative;z-index:1}
 /* ---------- partner logos ---------- */
 .logo-row{
+  --logo-h:clamp(56px,14.5vw,86px);
   display:flex;justify-content:center;align-items:center;
-  gap:clamp(12px,4vw,26px);margin:0 0 24px;
+  gap:clamp(16px,5.5vw,36px);margin:0 0 26px;
 }
-.logo-tile{
-  position:relative;
-  width:clamp(64px,16vw,94px);aspect-ratio:1;border-radius:50%;
-  background:#fff;display:grid;place-items:center;padding:10px;
-  box-shadow:
-    0 0 0 2px rgba(58,18,89,.16),
-    0 8px 20px -6px rgba(58,18,89,.45),
-    0 0 20px rgba(58,18,89,.30);
+/* No container: the PNGs are transparent, so the glow is a drop-shadow that
+   traces each logo's actual silhouette rather than a box behind it. */
+.logo{
+  height:var(--logo-h);width:auto;display:block;object-fit:contain;
   animation:logoGlow 3.6s ease-in-out infinite;
   transition:transform .25s cubic-bezier(.34,1.56,.64,1);
 }
+/* Optical sizing: a tall shield reads smaller than a wide wordmark at equal height. */
+.logo-sisc{height:calc(var(--logo-h) * 1.12)}
+.logo-filinvest{height:calc(var(--logo-h) * .88)}
+
 /* Stagger the pulse so the three breathe in sequence, not in lockstep. */
-.logo-tile:nth-child(2){animation-delay:.6s}
-.logo-tile:nth-child(3){animation-delay:1.2s}
-.logo-tile:hover{transform:translateY(-4px) scale(1.05)}
-.logo-tile img{
-  width:100%;height:100%;object-fit:contain;display:block;
-}
+.logo:nth-child(2){animation-delay:.6s}
+.logo:nth-child(3){animation-delay:1.2s}
+.logo:hover{transform:translateY(-4px) scale(1.06)}
+
 @keyframes logoGlow{
   0%,100%{
-    box-shadow:
-      0 0 0 2px rgba(58,18,89,.16),
-      0 8px 20px -6px rgba(58,18,89,.40),
-      0 0 18px rgba(58,18,89,.26);
+    filter:
+      drop-shadow(0 0 4px rgba(58,18,89,.50))
+      drop-shadow(0 0 13px rgba(58,18,89,.32))
+      drop-shadow(0 3px 7px rgba(58,18,89,.30));
   }
   50%{
-    box-shadow:
-      0 0 0 2px rgba(58,18,89,.34),
-      0 10px 26px -6px rgba(58,18,89,.58),
-      0 0 36px rgba(58,18,89,.52);
+    filter:
+      drop-shadow(0 0 8px rgba(58,18,89,.78))
+      drop-shadow(0 0 24px rgba(58,18,89,.55))
+      drop-shadow(0 3px 9px rgba(58,18,89,.38));
   }
 }
 
@@ -502,6 +501,11 @@ a:hover{text-decoration:underline}
   .fill{transition:none}
   .done-tick{animation:none;stroke-dashoffset:0}
   /* Keep the glow, drop the pulse. */
-  .logo-tile{animation:none;transition:none}
-  .logo-tile:hover{transform:none}
+  .logo{
+    animation:none;transition:none;
+    filter:
+      drop-shadow(0 0 6px rgba(58,18,89,.60))
+      drop-shadow(0 0 18px rgba(58,18,89,.40));
+  }
+  .logo:hover{transform:none}
 }
