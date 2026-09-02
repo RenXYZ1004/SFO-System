@@ -2,6 +2,11 @@
    Staff dashboard — reuses the tokens defined in styles.css
    ============================================================ */
 
+/* [hidden] must always win: several classes below set display, and a
+   class beats the browser default rule for the hidden attribute. */
+[hidden]{display:none !important}
+
+
 body.staff { background: var(--bg); }
 
 /* ---------- sign in ---------- */

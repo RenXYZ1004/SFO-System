@@ -1,6 +1,11 @@
 /* ============================================================
    Southville Run For A Cause 2026 — light + dark, mobile first
    ============================================================ */
+
+/* [hidden] must always win: several classes below set display, and a
+   class beats the browser default rule for the hidden attribute. */
+[hidden]{display:none !important}
+
 :root{
   /* event palette */
   --aqua-1:#b7f1ee;
