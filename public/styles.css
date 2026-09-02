@@ -2,14 +2,23 @@
    Southville Run For A Cause 2026 — light + dark, mobile first
    ============================================================ */
 :root{
-  --brand-1:#ff6a3d;
-  --brand-2:#ff2e63;
-  --accent:#ef4a2b;
-  --accent-ink:#fff;
-  --accent-soft:rgba(239,74,43,.10);
-  --accent-ring:rgba(239,74,43,.28);
+  /* event palette */
+  --aqua-1:#b7f1ee;
+  --aqua-2:#8ce3de;
+  --aqua-3:#63d3cd;
+  --purple:#3a1259;   /* SOUTHVILLE RUN / 2026 */
+  --pink:#ffc2dd;     /* FOR A CAUSE */
+  --green:#0c7c4a;    /* tagline */
 
-  --bg:#f6f4f2;
+  /* the rest of the page takes the wordmark's purple -> pink */
+  --brand-1:#5b2183;
+  --brand-2:#c4327f;
+  --accent:#6d2794;
+  --accent-ink:#fff;
+  --accent-soft:rgba(109,39,148,.10);
+  --accent-ring:rgba(109,39,148,.28);
+
+  --bg:#f7f5f9;
   --card:#fff;
   --ink:#1b1b1f;
   --ink-2:#54545c;
@@ -43,10 +52,17 @@
     --line:#2e2e36;
     --line-2:#3c3c46;
 
-    --accent:#ff7a5c;
-    --accent-ink:#2a0d06;
-    --accent-soft:rgba(255,122,92,.14);
-    --accent-ring:rgba(255,122,92,.32);
+    /* the hero keeps its aqua identity in dark mode; only the ink shifts */
+    --aqua-1:#7ad6d1;
+    --aqua-2:#57c4bf;
+    --aqua-3:#3aada8;
+
+    --brand-1:#a05fd0;
+    --brand-2:#f06fb0;
+    --accent:#c48ae8;
+    --accent-ink:#25082f;
+    --accent-soft:rgba(196,138,232,.16);
+    --accent-ring:rgba(196,138,232,.34);
 
     --ok:#5fd39a;
     --err:#ff9c90;
@@ -76,22 +92,61 @@ body{
 }
 .skip:focus{left:0}
 
-/* ---------- hero ---------- */
+/* ---------- hero (aqua) ---------- */
 .hero{
   position:relative;
-  background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
-  color:#fff;padding:44px 20px 58px;overflow:hidden;text-align:center;
+  background:linear-gradient(160deg,var(--aqua-1) 0%,var(--aqua-2) 60%,var(--aqua-3) 100%);
+  padding:40px 20px 58px;overflow:hidden;text-align:center;
 }
-.hero-inner{max-width:680px;margin:0 auto;position:relative;z-index:1}
+.hero-inner{max-width:700px;margin:0 auto;position:relative;z-index:1}
 .kicker{
-  margin:0 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
-  font-weight:700;opacity:.9;
+  margin:0 0 14px;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;
+  font-weight:800;color:var(--purple);opacity:.72;
 }
-.hero h1{
-  margin:0;font-size:clamp(28px,6vw,42px);line-height:1.12;
-  font-weight:800;letter-spacing:-.02em;
+
+/* wordmark: Southville Run (purple) / For A Cause (pink) / 2026 (purple) */
+.wordmark{
+  margin:0;font-weight:900;line-height:1.02;letter-spacing:-.015em;
+  text-transform:uppercase;font-size:clamp(30px,8.2vw,58px);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
 }
-.lede{margin:12px auto 0;max-width:52ch;font-size:15.5px;line-height:1.6;opacity:.94}
+.wm-purple{color:var(--purple)}
+.wm-year{font-size:.82em;letter-spacing:.06em}
+.wm-pink{
+  color:var(--pink);
+  /* Light pink cannot carry enough contrast on aqua by fill alone, so the
+     letterforms are outlined in the same dark purple. paint-order keeps the
+     stroke behind the fill so the shapes stay crisp. */
+  -webkit-text-stroke:.055em var(--purple);
+  paint-order:stroke fill;
+}
+@supports not (-webkit-text-stroke: 1px black){
+  .wm-pink{color:#d62a75}
+}
+
+.tagline{
+  margin:14px 0 0;color:var(--green);
+  font-size:clamp(15px,2.9vw,19px);font-weight:800;font-style:italic;
+  letter-spacing:.01em;
+}
+
+.event-meta{
+  list-style:none;margin:20px 0 0;padding:0;
+  display:flex;flex-wrap:wrap;justify-content:center;gap:9px;
+}
+.event-meta li{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.62);border:1px solid rgba(58,18,89,.14);
+  border-radius:99px;padding:7px 15px 7px 12px;
+  font-size:13.5px;color:var(--purple);
+}
+.event-meta strong{font-weight:800}
+.meta-icon{display:inline-flex;color:var(--purple);opacity:.8}
+
+.lede{
+  margin:16px auto 0;max-width:52ch;font-size:15px;line-height:1.6;
+  color:var(--purple);opacity:.86;
+}
 .hero-wave{
   position:absolute;left:0;right:0;bottom:-1px;height:34px;background:var(--bg);
   clip-path:ellipse(72% 100% at 50% 100%);

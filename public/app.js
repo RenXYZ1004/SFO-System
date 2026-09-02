@@ -22,7 +22,9 @@ async function init() {
     return banner('Could not load the registration form. Please refresh the page.');
   }
 
-  $('title').textContent = SCHEMA.title;
+  // The hero wordmark is styled markup; only replace it if it is not static.
+  const titleEl = $('title');
+  if (titleEl && !titleEl.hasAttribute('data-static')) titleEl.textContent = SCHEMA.title;
   $('desc').textContent = SCHEMA.description || '';
   document.title = SCHEMA.title;
 
