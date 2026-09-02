@@ -4,6 +4,7 @@ import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js
 import { confirmationHtml, confirmationText } from '../lib/template.js';
 import { deleteBlob } from './blob-upload.js';
 import { dbConfigured, saveRegistration, markSheetSynced, markEmailSent } from '../lib/db.js';
+import { afterResponse } from '../lib/after-response.js';
 
 const APP_NAME = process.env.APP_NAME || 'Southville Run For A Cause 2026';
 
@@ -91,50 +92,58 @@ export default async function handler(req, res) {
     });
   }
 
-  // --- 2. mirror into the Google Sheet — best effort ----------------
-  // The runner is already registered, so a Sheet failure must never turn into
-  // an error for them. It is recorded on the row and can be replayed.
-  appendRegistration({ reference: ref, labelled })
-    .then((r) => markSheetSynced(ref, r.ok, r.error).catch(() => {}))
-    .catch((err) => markSheetSynced(ref, false, err.message).catch(() => {}));
-
+  // --- 2. answer the runner now -------------------------------------
+  // They are registered the moment the database write succeeded. Making them
+  // wait ~10s while we talk to Sheets and Gmail is needless — those run after
+  // the response, kept alive by waitUntil so the platform cannot cut them off.
   const to = values[FORM.emailField];
   const name = values[FORM.nameField] || to;
-
   const miss = missingEnv();
-  if (miss.length) {
-    console.error('[register] mail not configured:', miss.join(', '));
-    return res.status(200).json({
-      ok: true,
-      ref,
-      mailSent: false,
-      mailError: `Registration saved, but email is not configured (missing ${miss.join(', ')}).`,
-    });
-  }
 
-  try {
-    await sendConfirmation({
-      to,
-      name,
-      subject: `Registration confirmed — ${APP_NAME}`,
-      html: confirmationHtml({ answers, appName: APP_NAME, ref, when }),
-      text: confirmationText({ answers, appName: APP_NAME, ref, when }),
-    });
-    markEmailSent(ref, true).catch(() => {});
-    return res.status(200).json({ ok: true, ref, mailSent: true });
-  } catch (err) {
-    const explained = explainMailError(err);
-    console.error('[register] mail failed:', explained);
-    markEmailSent(ref, false, explained).catch(() => {});
-    // The registration is already in the Sheet — never report it as lost.
-    return res.status(200).json({
-      ok: true,
-      ref,
-      mailSent: false,
-      mailError: 'Your registration was saved, but the confirmation email could not be sent.',
-      detail: explained,
-    });
-  }
+  res.status(200).json({
+    ok: true,
+    ref,
+    mailSent: false,
+    mailQueued: miss.length === 0,
+    mailError: miss.length
+      ? `Registration saved, but email is not configured (missing ${miss.join(', ')}).`
+      : undefined,
+  });
+
+  // --- 3. sheet mirror + confirmation email, after responding --------
+  await afterResponse(async () => {
+    try {
+      const mirrored = await appendRegistration({ reference: ref, labelled });
+      await markSheetSynced(ref, mirrored.ok, mirrored.error).catch(() => {});
+      if (!mirrored.ok) console.error('[register] sheet mirror failed:', mirrored.error);
+    } catch (err) {
+      console.error('[register] sheet mirror threw:', err.message);
+      await markSheetSynced(ref, false, err.message).catch(() => {});
+    }
+
+    if (miss.length) {
+      console.error('[register] mail not configured:', miss.join(', '));
+      await markEmailSent(ref, false, `not configured: missing ${miss.join(', ')}`).catch(() => {});
+      return;
+    }
+
+    try {
+      await sendConfirmation({
+        to,
+        name,
+        subject: `Registration confirmed — ${APP_NAME}`,
+        html: confirmationHtml({ answers, appName: APP_NAME, ref, when }),
+        text: confirmationText({ answers, appName: APP_NAME, ref, when }),
+      });
+      await markEmailSent(ref, true).catch(() => {});
+      console.log(`[register] ${ref} emailed to ${to}`);
+    } catch (err) {
+      const explained = explainMailError(err);
+      console.error('[register] mail failed:', explained);
+      // Never lost: the row records why, and "npm run replay" resends it.
+      await markEmailSent(ref, false, explained).catch(() => {});
+    }
+  });
 }
 
 function safeJson(s) {

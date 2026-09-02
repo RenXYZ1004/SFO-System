@@ -601,12 +601,12 @@ function showDone(data, v) {
   $('ref').textContent = data.ref;
 
   const to = v[SCHEMA.fields.find((f) => f.type === 'email')?.name] || 'your email address';
-  $('done-msg').textContent = data.mailSent
+  $('done-msg').textContent = (data.mailSent || data.mailQueued)
     ? `Your spot is confirmed. A confirmation email is on its way to ${to}.`
     : 'Your registration has been recorded.';
 
   const warn = $('mail-warn');
-  if (!data.mailSent) {
+  if (!data.mailSent && !data.mailQueued) {
     warn.hidden = false;
     warn.innerHTML = '<strong>Your registration was saved</strong>, but the confirmation ' +
       'email could not be sent. Please contact the organisers.' +
