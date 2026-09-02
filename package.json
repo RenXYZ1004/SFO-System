@@ -15,7 +15,8 @@
     "import": "node tools/import-form-source.js",
     "doctor": "node tools/doctor.js",
     "db:init": "node tools/db-init.js",
-    "sheet:init": "node tools/sheet-init.js"
+    "sheet:init": "node tools/sheet-init.js",
+    "replay": "node tools/replay.js"
   },
   "keywords": [],
   "author": "",
