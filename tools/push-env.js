@@ -52,7 +52,13 @@ console.log('\n  From .env.local:\n');
 for (const k of ready) console.log(`    [x] ${k.padEnd(22)} ${values[k].length} chars`);
 for (const k of blank) console.log(`    [ ] ${k.padEnd(22)} empty — will be skipped`);
 
-if (!existsSync(path.join(root, '.vercel', 'project.json'))) {
+// `vercel link` writes project.json for a plain link, or repo.json when the
+// project is linked through its git repository. Either counts as linked.
+const linked =
+  existsSync(path.join(root, '.vercel', 'project.json')) ||
+  existsSync(path.join(root, '.vercel', 'repo.json'));
+
+if (!linked) {
   console.log('\n  This project is not linked to Vercel yet. Run these first:\n');
   console.log('    npx vercel login');
   console.log('    npx vercel link\n');
