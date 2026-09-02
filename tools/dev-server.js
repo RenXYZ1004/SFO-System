@@ -62,6 +62,8 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(obj));
       },
       send(text) { res.writeHead(this.statusCode); res.end(text); },
+      end(buf) { res.writeHead(this.statusCode); res.end(buf); },
+      get statusCodeOut() { return this.statusCode; },
     };
 
     try {

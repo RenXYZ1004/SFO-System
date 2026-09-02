@@ -60,6 +60,16 @@ async function readBody(req) {
   return Buffer.concat(chunks);
 }
 
+/** Absolute link to the staff-only viewer for a stored receipt. */
+export function receiptUrl(req, pathname) {
+  const base =
+    process.env.SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
+    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+    `http://${req.headers?.host || 'localhost:3000'}`;
+  return `${base.replace(/\/+$/, '')}/api/receipt?p=${encodeURIComponent(pathname)}`;
+}
+
 const safeName = (s) =>
   String(s || 'receipt')
     .replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -120,25 +130,74 @@ export default async function handler(req, res) {
   const pathname = `proof-of-payment/${stamp}/${safeName(req.headers['x-filename'])}`;
 
   try {
-    const blob = await put(pathname, buf, {
-      access: 'public',
-      contentType,
-      addRandomSuffix: true, // unguessable URL
-      cacheControlMaxAge: 31536000,
+    const { blob, access } = await store(pathname, buf, contentType);
+    console.log(`[blob-upload] stored ${blob.pathname} (${buf.length} bytes, ${access})`);
+    return res.status(200).json({
+      ok: true,
+      // A private store can only be read through the staff-authenticated
+      // route; a public store's own URL is fine and works from the Sheet.
+      url: access === 'private' ? receiptUrl(req, blob.pathname) : blob.url,
+      pathname: blob.pathname,
+      access,
+      size: buf.length,
     });
-    console.log(`[blob-upload] stored ${blob.pathname} (${buf.length} bytes)`);
-    return res.status(200).json({ ok: true, url: blob.url, size: buf.length });
   } catch (err) {
     console.error('[blob-upload] put failed:', err.message);
     return res.status(500).json({ ok: false, error: 'Could not store the file. Please try again.' });
   }
 }
 
+/**
+ * Vercel Blob stores are created as either public or private and reject the
+ * wrong one outright. Rather than hard-coding a mode that breaks whenever the
+ * store is recreated, try the configured/last-known one and switch on the
+ * mismatch error, remembering the answer for subsequent uploads.
+ *
+ * Set BLOB_ACCESS=public|private to skip the probe entirely.
+ */
+let knownAccess = null;
+
+export function __resetAccessCache() { knownAccess = null; }
+
+async function store(pathname, buf, contentType) {
+  const opts = { contentType, addRandomSuffix: true, cacheControlMaxAge: 31536000 };
+  const first = knownAccess || process.env.BLOB_ACCESS || 'public';
+  const order = first === 'private' ? ['private', 'public'] : ['public', 'private'];
+
+  let lastErr;
+  for (const access of order) {
+    try {
+      const blob = await put(pathname, buf, { ...opts, access });
+      knownAccess = access;
+      return { blob, access };
+    } catch (err) {
+      lastErr = err;
+      // Only the access-mismatch error is worth retrying the other way.
+      if (!/Cannot use (public|private) access on a (private|public) store/i.test(err.message || '')) {
+        throw err;
+      }
+      console.warn(`[blob-upload] store is not ${access}; retrying as ${access === 'public' ? 'private' : 'public'}`);
+    }
+  }
+  throw lastErr;
+}
+
 /** Removes an orphaned upload when the registration it belonged to failed. */
-export async function deleteBlob(url) {
-  if (!url || !process.env.BLOB_READ_WRITE_TOKEN) return false;
+export function pathnameFrom(value) {
+  if (!value) return '';
   try {
-    await del(url);
+    const u = new URL(value);
+    return u.searchParams.get('p') || decodeURIComponent(u.pathname.replace(/^\//, ''));
+  } catch {
+    return String(value);
+  }
+}
+
+export async function deleteBlob(value) {
+  const pathname = pathnameFrom(value);
+  if (!pathname || !process.env.BLOB_READ_WRITE_TOKEN) return false;
+  try {
+    await del(pathname);
     return true;
   } catch (err) {
     console.error('[blob-upload] cleanup failed:', err.message);
