@@ -1,4 +1,4 @@
-import { FORM, validate } from '../lib/form-schema.js';
+import { FORM, validate, isActive } from '../lib/form-schema.js';
 import { appendRegistration } from '../lib/sheets.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
@@ -45,10 +45,13 @@ export default async function handler(req, res) {
     return res.status(422).json({ ok: false, errors });
   }
 
+  // Conditional questions that were not asked are stored blank, so a runner
+  // who tried "Employee", filled the salary-deduction panel, then switched
+  // back to GCash cannot leave stale payroll details in the sheet or email.
   const values = {};
   for (const f of FORM.fields) {
     const v = body[f.name];
-    values[f.name] = typeof v === 'string' ? v.trim() : '';
+    values[f.name] = isActive(f, body) && typeof v === 'string' ? v.trim() : '';
   }
 
   const when = new Date().toLocaleString('en-PH', {

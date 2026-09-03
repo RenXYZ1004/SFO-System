@@ -42,6 +42,7 @@ async function init() {
   wireEvents();
   wireViews();
   wireCauses();
+  wireSalaryDeduction();
   updateProgress();
 
   // Deep link straight to the form, and honour the back button.
@@ -77,23 +78,29 @@ function showView(name, { silent = false } = {}) {
 /* ---------- "where does it go?" modal ---------- */
 
 /**
+ * A photo slot with no file behind it yet keeps its place in the grid and
+ * says so, rather than rendering a broken-image icon. Used by both the
+ * beneficiary photos and the payment-method images.
+ */
+function wireShots(root) {
+  root.querySelectorAll('.shot img').forEach((img) => {
+    const markMissing = () => img.closest('.shot')?.classList.add('missing');
+    img.addEventListener('error', markMissing);
+    // Cached failures can land before the listener is attached.
+    if (img.complete && img.naturalWidth === 0) markMissing();
+  });
+}
+
+/**
  * Native <dialog> gives us the focus trap, Escape handling and focus restore
- * for free, so this only has to cover opening, the backdrop click, and the
- * placeholder for slots whose photo has not been added yet.
+ * for free, so this only has to cover opening and the backdrop click.
  */
 function wireCauses() {
   const modal = $('causes-modal');
   const open = $('causes-open');
   if (!modal || !open) return;
 
-  // A slot with no file yet keeps its place and says so, rather than
-  // rendering a broken-image icon.
-  modal.querySelectorAll('.shot img').forEach((img) => {
-    const markMissing = () => img.closest('.shot')?.classList.add('missing');
-    img.addEventListener('error', markMissing);
-    // Cached failures can land before the listener is attached.
-    if (img.complete && img.naturalWidth === 0) markMissing();
-  });
+  wireShots(modal);
 
   open.addEventListener('click', () => {
     if (typeof modal.showModal === 'function') modal.showModal();
@@ -111,6 +118,140 @@ function wireCauses() {
       e.clientY >= r.top && e.clientY <= r.bottom;
     if (!inside) modal.close();
   });
+}
+
+/* ---------- SISC salary deduction panel ---------- */
+
+/**
+ * Paying by payroll deduction needs four extra answers that nobody else has
+ * to see, so they live in a pop-up rather than the main flow. The dialog sits
+ * inside <form>, which means its answers travel with the submission whether
+ * it happens to be open or closed — no shadow state to keep in sync.
+ */
+function wireSalaryDeduction() {
+  const modal = $('sd-modal');
+  if (!modal) return;
+
+  // Whichever control the schema produced for the method question.
+  document.querySelectorAll('[name="payment_method"]').forEach((el) =>
+    el.addEventListener('change', () => onMethodChange()));
+
+  $('sd-edit')?.addEventListener('click', openSd);
+  $('sd-close')?.addEventListener('click', () => closeSd());
+  $('sd-cancel')?.addEventListener('click', () => closeSd());
+  $('sd-save')?.addEventListener('click', saveSd);
+
+  // Enter inside the panel means "save these details", not "submit the whole
+  // registration" — the inputs belong to the outer form, so without this the
+  // browser would send a half-filled form.
+  modal.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+      e.preventDefault();
+      saveSd();
+    }
+  });
+
+  // Escape and the backdrop both close the dialog; either way the card
+  // underneath has to tell the truth about what is still missing.
+  modal.addEventListener('close', () => { refreshSdSummary(); updateProgress(); });
+  modal.addEventListener('click', (e) => {
+    if (e.target !== modal) return;
+    const r = modal.getBoundingClientRect();
+    const inside =
+      e.clientX >= r.left && e.clientX <= r.right &&
+      e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) closeSd();
+  });
+
+  refreshSdSummary();
+}
+
+function openSd() {
+  const modal = $('sd-modal');
+  if (!modal) return;
+  sdError('');
+  if (typeof modal.showModal === 'function') {
+    if (!modal.open) modal.showModal();
+  } else {
+    modal.setAttribute('open', '');
+  }
+  modal.querySelector('input')?.focus();
+}
+
+function closeSd() {
+  const modal = $('sd-modal');
+  if (!modal) return;
+  if (typeof modal.close === 'function' && modal.open) modal.close();
+  else modal.removeAttribute('open');
+  refreshSdSummary();
+  updateProgress();
+}
+
+/** Picked a method: open the panel for employees, clear it for everyone else. */
+function onMethodChange() {
+  const employee = panelFields(SD_PANEL).some((f) => isActive(f));
+  if (employee) {
+    refreshSdSummary();
+    openSd();
+  } else {
+    clearSd();
+    closeSd();
+  }
+  updateProgress();
+}
+
+function clearSd() {
+  for (const f of panelFields(SD_PANEL)) {
+    const el = document.querySelector(`[name="${cssEsc(f.name)}"]`);
+    if (el) el.value = '';
+    setFieldState(f.name, '', '');
+  }
+  sdError('');
+}
+
+function saveSd() {
+  const v = values();
+  const fields = panelFields(SD_PANEL);
+  let bad = 0;
+  for (const f of fields) {
+    const msg = checkField(f, v[f.name], v);
+    if (msg) bad++;
+    setFieldState(f.name, msg, v[f.name]);
+  }
+  if (bad) {
+    sdError(`${bad} ${bad === 1 ? 'field needs' : 'fields need'} your attention before these details can be saved.`);
+    $('sd-modal').querySelector('.field.invalid input')?.focus();
+    return;
+  }
+  sdError('');
+  closeSd();
+}
+
+function sdError(message) {
+  const box = $('sd-error');
+  if (!box) return;
+  box.textContent = message;
+  box.hidden = !message;
+}
+
+/** Keeps the card under the method chips in step with the panel's answers. */
+function refreshSdSummary() {
+  const box = $('sd-summary');
+  if (!box) return;
+
+  const v = values();
+  const fields = panelFields(SD_PANEL);
+  const employee = fields.some((f) => isActive(f, v));
+  box.hidden = !employee;
+  if (!employee) return;
+
+  const complete = fields.every((f) => !checkField(f, v[f.name], v));
+  box.classList.toggle('ready', complete);
+  $('sd-badge').textContent = complete ? 'Details saved' : 'Needs details';
+  $('sd-summary-text').textContent = complete
+    ? fields.map((f) => v[f.name]).filter(Boolean).slice(0, 3).join(' · ')
+    : 'Three equal salary deductions starting November 15, 2026. We need your employee details before you can submit.';
+  $('sd-edit').textContent = complete ? 'Edit details' : 'Add details';
 }
 
 function wireViews() {
@@ -137,8 +278,24 @@ function groupBySection(fields) {
   return groups;
 }
 
+const SD_PANEL = 'salary-deduction';
+const panelFields = (panel) => SCHEMA.fields.filter((f) => f.panel === panel);
+
+/**
+ * Is this question actually being asked, given the answers so far?
+ * Mirrors isActive() in lib/form-schema.js — the page and the server must
+ * never disagree about which questions are required.
+ */
+function isActive(f, all) {
+  const cond = f.showIf;
+  if (!cond) return true;
+  const current = ((all || values())[cond.field] || '').trim();
+  return cond.equals === undefined ? current !== '' : current === cond.equals;
+}
+
 function renderSections() {
-  const groups = groupBySection(SCHEMA.fields);
+  // Questions belonging to a pop-up panel are drawn there, not in the flow.
+  const groups = groupBySection(SCHEMA.fields.filter((f) => !f.panel));
   const single = groups.length === 1 && !groups[0].title;
 
   $('sections').innerHTML = groups.map((g, i) => {
@@ -147,11 +304,64 @@ function renderSections() {
         <span class="step" aria-hidden="true">${i + 1}</span>
         <h2>${esc(g.title || 'Your details')}</h2>
       </div>`;
-    return `<section class="section">
+    return `<section class="section" data-section="${esc(g.title)}">
       ${head}
       <div class="section-body">${g.fields.map(renderField).join('')}</div>
     </section>`;
   }).join('');
+
+  const sd = $('sd-fields');
+  if (sd) sd.innerHTML = panelFields(SD_PANEL).map(renderField).join('');
+
+  mountPaymentInfo();
+  mountSdSummary();
+}
+
+/**
+ * Drops the account details and the payment-method photos at the top of the
+ * Payment section, so they are on screen while the fee is being settled
+ * rather than buried on the intro page.
+ */
+function mountPaymentInfo() {
+  const tpl = $('tpl-payment-info');
+  const body = document.querySelector('.section[data-section="Payment"] .section-body');
+  if (!tpl || !body) return;
+
+  body.prepend(tpl.content.cloneNode(true));
+  wireShots(body);
+
+  $('acct-copy')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    try {
+      await navigator.clipboard.writeText($('acct-no').textContent.trim());
+      btn.textContent = 'Copied';
+      setTimeout(() => (btn.textContent = 'Copy'), 1600);
+    } catch {
+      btn.textContent = 'Press Ctrl+C';
+    }
+  });
+}
+
+/**
+ * The card that sits under the payment-method chips once "Employee" is
+ * chosen: it reports whether the salary-deduction panel has been filled in,
+ * and is the way back into it.
+ */
+function mountSdSummary() {
+  const anchor = document.querySelector('.field[data-for="payment_method"]');
+  if (!anchor || !panelFields(SD_PANEL).length) return;
+
+  const box = document.createElement('div');
+  box.className = 'sd-summary';
+  box.id = 'sd-summary';
+  box.hidden = true;
+  box.innerHTML = `
+    <div class="sd-summary-main">
+      <span class="sd-badge" id="sd-badge">Needs details</span>
+      <p class="sd-summary-text" id="sd-summary-text"></p>
+    </div>
+    <button type="button" class="btn-ghost sd-edit" id="sd-edit">Add details</button>`;
+  anchor.after(box);
 }
 
 function renderField(f) {
@@ -224,9 +434,12 @@ function renderField(f) {
   const max = f.maxLength ? ` maxlength="${f.maxLength}"` : '';
   const mode = f.type === 'email' ? 'email' : (isPhone(f) ? 'tel' : 'text');
   const auto = f.type === 'email' ? 'email' : (isPhone(f) ? 'tel' : 'on');
+  // A schema placeholder is a worked example ("DELA CRUZ, JUAN"); without one
+  // the generic prompt still tells the reader the box is theirs to fill.
+  const hint = f.placeholder || 'Your answer';
   return field(f, id, star, help, describedBy,
     `<input type="${type}" name="${esc(f.name)}" id="${id}"${max}
-            inputmode="${mode}" autocomplete="${auto}" placeholder="Your answer"
+            inputmode="${mode}" autocomplete="${auto}" placeholder="${esc(hint)}"
             aria-describedby="${esc(describedBy)}">`);
 }
 
@@ -247,8 +460,13 @@ function values() {
   return Object.fromEntries(new FormData($('form')).entries());
 }
 
-/** Mirrors the server rules so people get feedback before a round-trip. */
-function checkField(f, v) {
+/**
+ * Mirrors the server rules so people get feedback before a round-trip.
+ * `all` is the full answer map; pass it so a question that is not currently
+ * being asked is never reported as missing.
+ */
+function checkField(f, v, all) {
+  if (all && !isActive(f, all)) return '';
   const value = (v || '').trim();
   if (f.type === 'file') {
     if (!value) return f.required ? 'Please upload your proof of payment' : '';
@@ -258,6 +476,11 @@ function checkField(f, v) {
   if (!value) return '';
   if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
     return 'Enter a valid email address';
+  }
+  if (f.pattern) {
+    // Compiled once per field rather than on every keystroke.
+    f._re ||= new RegExp(f.pattern);
+    if (!f._re.test(value)) return f.patternMessage || 'That is not in the expected format';
   }
   if (f.maxLength && value.length > f.maxLength) {
     return `Keep this under ${f.maxLength} characters`;
@@ -294,11 +517,13 @@ function clearErrors() {
 /* ---------- progress ---------- */
 
 function updateProgress() {
-  const req = SCHEMA.fields.filter((f) => f.required);
+  const v = values();
+  // Choosing "Employee" adds the salary-deduction questions to the count,
+  // and switching away from it takes them back out.
+  const req = SCHEMA.fields.filter((f) => f.required && isActive(f, v));
   if (!req.length) { $('progress-card').hidden = true; return; }
 
-  const v = values();
-  const done = req.filter((f) => !checkField(f, v[f.name])).length;
+  const done = req.filter((f) => !checkField(f, v[f.name], v)).length;
   const pct = Math.round((done / req.length) * 100);
 
   $('progress-card').hidden = false;
@@ -319,8 +544,9 @@ function wireEvents() {
     if (!wrap) return;
     const f = SCHEMA.fields.find((x) => x.name === wrap.dataset.for);
     if (!f) return;
-    const v = values()[f.name];
-    setFieldState(f.name, checkField(f, v), v);
+    const all = values();
+    const v = all[f.name];
+    setFieldState(f.name, checkField(f, v, all), v);
   }, true);
 
   // Clear an error as soon as the answer becomes valid again.
@@ -329,8 +555,9 @@ function wireEvents() {
     if (wrap?.classList.contains('invalid')) {
       const f = SCHEMA.fields.find((x) => x.name === wrap.dataset.for);
       if (f) {
-        const v = values()[f.name];
-        if (!checkField(f, v)) setFieldState(f.name, '', v);
+        const all = values();
+        const v = all[f.name];
+        if (!checkField(f, v, all)) setFieldState(f.name, '', v);
       }
     }
     updateProgress();
@@ -357,6 +584,7 @@ function wireEvents() {
     resetUploads();
     document.querySelectorAll('.field').forEach((el) => el.classList.remove('invalid', 'done'));
     document.querySelectorAll('.err-msg').forEach((p) => (p.textContent = ''));
+    refreshSdSummary();
     $('done').hidden = true;
     form.hidden = false;
     $('progress-card').hidden = false;
@@ -520,7 +748,8 @@ function banner(html, kind = '') {
 }
 
 function focusFirstInvalid() {
-  const el = document.querySelector('.field.invalid');
+  // Scoped to the visible flow: a panel field lives in a dialog that may be shut.
+  const el = document.querySelector('#sections .field.invalid');
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.querySelector('input,select,textarea')?.focus({ preventScroll: true });
@@ -532,15 +761,20 @@ async function onSubmit(e) {
 
   const v = values();
   let bad = 0;
+  let badInPanel = 0;
   for (const f of SCHEMA.fields) {
-    const msg = checkField(f, v[f.name]);
-    if (msg) bad++;
+    const msg = checkField(f, v[f.name], v);
+    if (msg) { bad++; if (f.panel) badInPanel++; }
     setFieldState(f.name, msg, v[f.name]);
   }
+  refreshSdSummary();
   if (bad) {
     banner(`<strong>${bad} ${bad === 1 ? 'answer needs' : 'answers need'} your attention.</strong>
             Please check the highlighted ${bad === 1 ? 'question' : 'questions'} below.`);
-    focusFirstInvalid();
+    // An unanswered panel question sits behind a closed dialog, so scrolling
+    // to it would land on nothing. Reopen the panel instead.
+    if (badInPanel && bad === badInPanel) openSd();
+    else focusFirstInvalid();
     return;
   }
 

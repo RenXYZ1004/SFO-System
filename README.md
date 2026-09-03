@@ -124,12 +124,53 @@ switch to a Gmail App Password — the mailer takes that path automatically.
 | `api/register.js` | validate → record → *then* email |
 | `api/schema.js` | serves the schema to the front-end |
 | `public/index.html` `styles.css` `app.js` | the cloned form UI (light + dark) |
+| `public/docs/` | Waiver of Liability + Health Declaration PDFs, linked from the intro |
+| `public/payment/` | GCash / bank transfer / salary-deduction images shown in the Payment section |
 | `tools/fetch-form-schema.js` | regenerates `form-schema.js` from the live form |
 | `tools/import-form-source.js` | same, from a saved page or pasted payload |
 | `lib/parse-form.js` | shared Google Forms payload parser |
 | `tools/get-refresh-token.js` | one-time OAuth consent → refresh token |
 | `tools/test-smtp.js` | end-to-end mail check |
 | `tools/dev-server.js` | local stand-in for Vercel routing |
+
+---
+
+## Payment methods
+
+Three options, set in `lib/form-schema.js` under `payment_method`:
+
+| Option | What happens |
+|---|---|
+| GCash | pay, then upload the receipt as proof of payment |
+| Bank transfer | PNB account details are shown at the top of the Payment section |
+| Employee | opens the **SISC Salary Deduction** pop-up: employee full name, employee number, department/office and a typed payroll authorisation |
+
+The four salary-deduction questions are ordinary schema fields carrying two
+extra keys:
+
+```js
+panel: 'salary-deduction',                                // drawn in the pop-up
+showIf: { field: 'payment_method', equals: 'Employee' },  // only asked of employees
+```
+
+`isActive()` in `lib/form-schema.js` is the single rule for whether a
+conditional question applies, and both the page and `validate()` use it — so
+they cannot disagree about what is required. `api/register.js` blanks any
+answer to a question that was not asked, so switching back to GCash never
+leaves payroll details in the Sheet or the confirmation email.
+
+### Replacing the placeholder assets
+
+`public/docs/` currently holds **placeholder** PDFs, and `public/payment/`
+has no images yet (each empty slot shows an "Image coming soon" tile). Drop the
+real files in using the exact filenames listed in each folder's `README.txt`.
+
+### After changing the questions
+
+`headerRow()` in `lib/sheets.js` derives the Sheet columns from the schema, so
+adding or reordering a field changes the column layout. Run `npm run sheet:init`
+against a fresh tab, or update the header row by hand — rows written before the
+change keep the old column order.
 
 ---
 

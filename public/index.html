@@ -6,6 +6,9 @@
 <meta name="color-scheme" content="light dark">
 <title>Southville Run For A Cause 2026</title>
 <meta name="description" content="Register for the Southville Run For A Cause 2026 — a community fun run by Southville for Others (SFO) and the Alumni Department. November 22, 2026 at Central Park, Filinvest, Alabang.">
+<meta name="theme-color" content="#8ce3de" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -22,11 +25,11 @@
 
       <div class="logo-row">
         <img class="logo logo-sisc" src="/logos/sisc.png" width="249" height="320"
-             decoding="async" alt="Southville International School and Colleges">
+             fetchpriority="high" decoding="async" alt="Southville International School and Colleges">
         <img class="logo logo-sfo" src="/logos/sfo.png" width="298" height="320"
-             decoding="async" alt="Southville for Others">
+             fetchpriority="high" decoding="async" alt="Southville for Others">
         <img class="logo logo-filinvest" src="/logos/filinvest.png" width="320" height="257"
-             decoding="async" alt="Filinvest City">
+             fetchpriority="high" decoding="async" alt="Filinvest City">
       </div>
 
       <p class="kicker">Southville for Others &amp; Alumni Department</p>
@@ -183,12 +186,46 @@
         <ol class="checklist">
           <li>Complete all required fields in this form.</li>
           <li>Choose your race category and preferred shirt size.</li>
-          <li>Settle your registration fee through <strong>GCash</strong> or
-              <strong>bank transfer</strong>.</li>
+          <li>Settle your registration fee through <strong>GCash</strong>,
+              <strong>bank transfer</strong>, or — for SISC employees —
+              <strong>salary deduction</strong>.</li>
           <li>Upload your proof of payment before submitting.</li>
           <li>Read and agree to the <strong>Waiver of Liability</strong> and
-              <strong>Health Declaration</strong> before final submission.</li>
+              <strong>Health Declaration</strong> before final submission.
+              Both open as PDFs:</li>
         </ol>
+
+        <div class="doc-links">
+          <a class="doc-link" href="/docs/waiver-of-liability.pdf"
+             target="_blank" rel="noopener">
+            <span class="doc-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                   stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2.5H7.5A2.5 2.5 0 0 0 5 5v14a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 19 19V7.5Z"/>
+                <path d="M14 2.5V7a.5.5 0 0 0 .5.5H19M8.5 13h7M8.5 17h4.5"/>
+              </svg>
+            </span>
+            <span class="doc-text">
+              <span class="doc-name">Waiver of Liability</span>
+              <span class="doc-sub">PDF · opens in a new tab</span>
+            </span>
+          </a>
+
+          <a class="doc-link" href="/docs/health-declaration.pdf"
+             target="_blank" rel="noopener">
+            <span class="doc-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                   stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2.5H7.5A2.5 2.5 0 0 0 5 5v14a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 19 19V7.5Z"/>
+                <path d="M14 2.5V7a.5.5 0 0 0 .5.5H19M12 11.5v5M9.5 14h5"/>
+              </svg>
+            </span>
+            <span class="doc-text">
+              <span class="doc-name">Health Declaration</span>
+              <span class="doc-sub">PDF · opens in a new tab</span>
+            </span>
+          </a>
+        </div>
 
         <div class="notice info">
           <strong>Note:</strong> Each registration is for <strong>one (1) participant only</strong>.
@@ -261,8 +298,97 @@
 
     <p class="lede-form" id="desc"></p>
 
+    <!-- Cloned into the "Payment" section by app.js, above the questions,
+         so the account details are on screen while the fee is being settled. -->
+    <template id="tpl-payment-info">
+      <div class="pay-info">
+        <h3 class="pay-h">Payment method</h3>
+
+        <div class="shots pay-shots">
+          <figure class="shot" style="--i:0">
+            <img src="/payment/gcash.jpg" alt="GCash payment details" loading="lazy">
+            <figcaption>GCash</figcaption>
+          </figure>
+          <figure class="shot" style="--i:1">
+            <img src="/payment/bank-transfer.jpg" alt="Bank transfer details" loading="lazy">
+            <figcaption>Bank transfer</figcaption>
+          </figure>
+          <figure class="shot" style="--i:2">
+            <img src="/payment/salary-deduction.jpg" alt="SISC salary deduction form" loading="lazy">
+            <figcaption>Salary deduction</figcaption>
+          </figure>
+        </div>
+
+        <dl class="bank">
+          <div class="bank-row">
+            <dt>Bank Name</dt>
+            <dd>Philippine National Bank (PNB) Account, Las Piñas-Aguilar Avenue</dd>
+          </div>
+          <div class="bank-row">
+            <dt>Account Name</dt>
+            <dd>Southville Social Environmental Educational Development Foundation Inc.</dd>
+          </div>
+          <div class="bank-row">
+            <dt>Account Number</dt>
+            <dd>
+              <span class="acct" id="acct-no">1451-7000-1355</span>
+              <button type="button" class="btn-ghost" id="acct-copy">Copy</button>
+            </dd>
+          </div>
+        </dl>
+
+        <p class="pay-note">
+          Keep the receipt — you will be asked to upload it as your proof of payment below.
+        </p>
+      </div>
+    </template>
+
     <form id="form" novalidate autocomplete="on">
       <div id="sections"></div>
+
+      <!-- SISC salary deduction: shown only when "Employee" is the method.
+           app.js fills #sd-fields straight from the schema. -->
+      <dialog id="sd-modal" class="modal sd-modal" aria-labelledby="sd-title">
+        <div class="modal-head">
+          <div>
+            <h2 id="sd-title">SISC Salary Deduction</h2>
+            <p class="modal-sub">For employees paying by payroll deduction</p>
+          </div>
+          <button type="button" class="modal-close" id="sd-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M6 6l12 12M18 6L6 18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <p class="sd-lead">
+            This form is for SISC employees who wish to join the
+            <strong>SGEN Run for a Cause 2026</strong> and opt to pay their registration
+            fee through salary deduction.
+          </p>
+
+          <p class="sd-please">Please:</p>
+          <ul class="sd-steps">
+            <li>Fill out all the required fields below.</li>
+            <li>Upload a screenshot of the completed form through the online
+                registration page.</li>
+            <li>The total registration fee will be divided into
+                <strong>three (3) equal salary deductions</strong>, starting
+                <strong>November 15, 2026</strong>.</li>
+          </ul>
+
+          <div id="sd-fields" class="sd-fields"></div>
+
+          <div id="sd-error" class="notice sd-error" hidden></div>
+        </div>
+
+        <div class="modal-foot-bar">
+          <button type="button" class="btn-ghost" id="sd-cancel">Cancel</button>
+          <button type="button" class="btn btn-sd" id="sd-save">Save details</button>
+        </div>
+      </dialog>
 
       <div class="submit-row">
         <button id="submit" type="submit" class="btn">
