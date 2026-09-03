@@ -161,9 +161,15 @@ leaves payroll details in the Sheet or the confirmation email.
 
 ### Replacing the placeholder assets
 
-`public/docs/` currently holds **placeholder** PDFs, and `public/payment/`
-has no images yet (each empty slot shows an "Image coming soon" tile). Drop the
-real files in using the exact filenames listed in each folder's `README.txt`.
+`public/docs/` currently holds **placeholder** PDFs — replace them with the
+signed documents, keeping the filenames, or the links on the front page will
+serve the placeholders.
+
+`public/payment/` holds the GCash and bank-transfer images. Filenames are
+matched loosely (`gcash` / `bank-transfer`, hyphen or underscore, `.jpg`
+`.png` `.jpeg` or `.webp`), so a file can go in as it came off the phone; a
+method with no image shows an "Image coming soon" tile. See each folder's
+`README.txt`.
 
 ### After changing the questions
 

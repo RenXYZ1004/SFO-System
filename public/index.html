@@ -302,43 +302,82 @@
          so the account details are on screen while the fee is being settled. -->
     <template id="tpl-payment-info">
       <div class="pay-info">
-        <h3 class="pay-h">Payment method</h3>
+        <h3 class="pay-h">How to pay</h3>
 
+        <!-- data-method ties each tile to an answer of the payment_method
+             question, so app.js can bring the relevant one forward. -->
         <div class="shots pay-shots">
-          <figure class="shot" style="--i:0">
-            <img src="/payment/gcash.jpg" alt="GCash payment details" loading="lazy">
+          <figure class="shot" data-method="GCash" data-file="gcash" style="--i:0">
+            <img alt="GCash payment details" loading="lazy">
+            <a class="shot-zoom" target="_blank" rel="noopener" hidden>
+              <span aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 4h6v6M20 4l-8 8M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
+                </svg>
+              </span>
+              <span class="shot-zoom-text" aria-hidden="true">Full size</span>
+              <span class="sr">View the GCash image at full size</span>
+            </a>
             <figcaption>GCash</figcaption>
           </figure>
-          <figure class="shot" style="--i:1">
-            <img src="/payment/bank-transfer.jpg" alt="Bank transfer details" loading="lazy">
+          <figure class="shot" data-method="Bank transfer" data-file="bank-transfer" style="--i:1">
+            <img alt="Bank transfer details" loading="lazy">
+            <a class="shot-zoom" target="_blank" rel="noopener" hidden>
+              <span aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 4h6v6M20 4l-8 8M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
+                </svg>
+              </span>
+              <span class="shot-zoom-text" aria-hidden="true">Full size</span>
+              <span class="sr">View the bank transfer image at full size</span>
+            </a>
             <figcaption>Bank transfer</figcaption>
-          </figure>
-          <figure class="shot" style="--i:2">
-            <img src="/payment/salary-deduction.jpg" alt="SISC salary deduction form" loading="lazy">
-            <figcaption>Salary deduction</figcaption>
           </figure>
         </div>
 
-        <dl class="bank">
-          <div class="bank-row">
-            <dt>Bank Name</dt>
-            <dd>Philippine National Bank (PNB) Account, Las Piñas-Aguilar Avenue</dd>
-          </div>
-          <div class="bank-row">
-            <dt>Account Name</dt>
-            <dd>Southville Social Environmental Educational Development Foundation Inc.</dd>
-          </div>
-          <div class="bank-row">
-            <dt>Account Number</dt>
-            <dd>
-              <span class="acct" id="acct-no">1451-7000-1355</span>
-              <button type="button" class="btn-ghost" id="acct-copy">Copy</button>
-            </dd>
-          </div>
-        </dl>
+        <div class="bank-card">
+          <p class="bank-card-h">
+            <span class="bank-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+                   stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9.6 12 4l9 5.6M5 10.5v8M9.5 10.5v8M14.5 10.5v8M19 10.5v8M3 21h18"/>
+              </svg>
+            </span>
+            Bank transfer details
+          </p>
 
-        <p class="pay-note">
-          Keep the receipt — you will be asked to upload it as your proof of payment below.
+          <dl class="bank">
+            <div class="bank-row">
+              <dt>Bank Name</dt>
+              <dd>Philippine National Bank (PNB) Account, Las Piñas-Aguilar Avenue</dd>
+            </div>
+            <div class="bank-row">
+              <dt>Account Name</dt>
+              <dd>Southville Social Environmental Educational Development Foundation Inc.</dd>
+            </div>
+            <div class="bank-row">
+              <dt>Account Number</dt>
+              <dd class="bank-acct">
+                <span class="acct" id="acct-no">1451-7000-1355</span>
+                <button type="button" class="btn-ghost acct-copy" id="acct-copy">
+                  <span class="acct-copy-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="12" height="12" rx="2.2"/>
+                      <path d="M5.5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5v1"/>
+                    </svg>
+                  </span>
+                  <span class="acct-copy-label">Copy</span>
+                </button>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <p class="pay-note" id="pay-note">
+          Choose your payment method below, then upload the receipt as your proof of payment.
         </p>
       </div>
     </template>

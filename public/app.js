@@ -189,6 +189,7 @@ function closeSd() {
 
 /** Picked a method: open the panel for employees, clear it for everyone else. */
 function onMethodChange() {
+  refreshPaymentInfo();
   const employee = panelFields(SD_PANEL).some((f) => isActive(f));
   if (employee) {
     refreshSdSummary();
@@ -322,24 +323,132 @@ function renderSections() {
  * Payment section, so they are on screen while the fee is being settled
  * rather than buried on the intro page.
  */
+/** Finds a rendered section by its schema title. */
+function sectionEl(title) {
+  // Matched on the dataset rather than an attribute selector: section titles
+  // come from the schema and may contain quotes or an ampersand.
+  return [...document.querySelectorAll('.section')]
+    .find((el) => el.dataset.section === title) || null;
+}
+
 function mountPaymentInfo() {
   const tpl = $('tpl-payment-info');
-  const body = document.querySelector('.section[data-section="Payment"] .section-body');
+  const body = sectionEl('Payment')?.querySelector('.section-body');
   if (!tpl || !body) return;
 
   body.prepend(tpl.content.cloneNode(true));
-  wireShots(body);
+  body.querySelectorAll('.pay-shots .shot[data-file]').forEach(wirePayImage);
+
+  refreshPaymentInfo();
 
   $('acct-copy')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     try {
       await navigator.clipboard.writeText($('acct-no').textContent.trim());
-      btn.textContent = 'Copied';
-      setTimeout(() => (btn.textContent = 'Copy'), 1600);
+      label(btn, 'Copied');
+      btn.classList.add('copied');
+      setTimeout(() => { label(btn, 'Copy'); btn.classList.remove('copied'); }, 1600);
     } catch {
-      btn.textContent = 'Press Ctrl+C';
+      label(btn, 'Press Ctrl+C');
     }
   });
+}
+
+const label = (btn, text) => {
+  const el = btn.querySelector('.acct-copy-label');
+  if (el) el.textContent = text; else btn.textContent = text;
+};
+
+/**
+ * What a runner has to do next depends entirely on how they are paying, so
+ * the payment card says one thing at a time: the tile for the chosen method
+ * comes forward, the other steps back, and the note underneath — plus the
+ * hint on the upload question — describe that method and no other.
+ */
+const PAYMENT_GUIDE = {
+  'GCash': {
+    note: 'Send the fee to the GCash account above, then upload the confirmation screenshot as your proof of payment.',
+    upload: 'Screenshot of your GCash confirmation. Max 4 MB.',
+  },
+  'Bank transfer': {
+    note: 'Deposit or transfer the fee to the PNB account above, then upload the deposit slip or transfer receipt.',
+    upload: 'Photo or PDF of your deposit slip or transfer receipt. Max 4 MB.',
+  },
+  'Employee': {
+    note: 'Nothing to send now — the fee is taken from your payroll in three equal deductions. Upload a screenshot of your completed salary-deduction details instead.',
+    upload: 'Screenshot of your completed salary-deduction details. Max 4 MB.',
+  },
+};
+
+function refreshPaymentInfo() {
+  const chosen = (values().payment_method || '').trim();
+
+  document.querySelectorAll('.pay-shots .shot').forEach((tile) => {
+    const mine = tile.dataset.method === chosen;
+    // Nothing is dimmed until a method is picked — both are still on offer.
+    tile.classList.toggle('on', !!chosen && mine);
+    tile.classList.toggle('off', !!chosen && !mine);
+  });
+
+  // The PNB details are only what a bank transfer needs. They stay on the
+  // page for anyone still deciding, but step back once another method is
+  // chosen rather than competing with the instruction that does apply.
+  const bank = document.querySelector('.bank-card');
+  if (bank) bank.classList.toggle('off', !!chosen && chosen !== 'Bank transfer');
+
+  const guide = PAYMENT_GUIDE[chosen];
+  const note = $('pay-note');
+  if (note) {
+    note.textContent = guide
+      ? guide.note
+      : 'Choose your payment method below, then upload the receipt as your proof of payment.';
+  }
+
+  // The upload question's hint falls back to whatever the schema says.
+  const hint = $('h_proof_of_payment');
+  const field = SCHEMA.fields.find((f) => f.name === 'proof_of_payment');
+  if (hint && field) hint.textContent = guide ? guide.upload : (field.help || '');
+}
+
+/**
+ * Whoever drops the payment images in is working from a phone or a scanner,
+ * not from the README, so the tile tries the sensible spellings of its
+ * filename in turn — hyphen or underscore, jpg or png — and only gives up
+ * (showing the "coming soon" placeholder) once none of them exists.
+ */
+const PAY_IMAGE_EXTENSIONS = ['jpg', 'png', 'jpeg', 'webp'];
+
+function payImageCandidates(base) {
+  const names = base.includes('-') ? [base, base.replace(/-/g, '_')] : [base];
+  return names.flatMap((n) => PAY_IMAGE_EXTENSIONS.map((ext) => `/payment/${n}.${ext}`));
+}
+
+function wirePayImage(figure) {
+  const img = figure.querySelector('img');
+  if (!img) return;
+
+  const queue = payImageCandidates(figure.dataset.file);
+  let i = 0;
+
+  const next = () => {
+    if (i >= queue.length) { figure.classList.add('missing'); return; }
+    img.src = queue[i++];
+  };
+
+  // Only the last failure is a real "no image": the others are just the next
+  // spelling to try, so wireShots' own error handler must not fire first.
+  img.addEventListener('error', next);
+
+  // A QR code or an account card is read, not glanced at, so once one is
+  // really there offer it at its own size.
+  img.addEventListener('load', () => {
+    const zoom = figure.querySelector('.shot-zoom');
+    if (!zoom) return;
+    zoom.href = img.src;
+    zoom.hidden = false;
+  });
+
+  next();
 }
 
 /**
@@ -531,6 +640,29 @@ function updateProgress() {
   $('progress-pct').textContent = `${pct}%`;
   $('fill').style.width = `${pct}%`;
   $('track').setAttribute('aria-valuenow', String(pct));
+
+  markCompleteSections(v);
+}
+
+/**
+ * A section head shows a tick once nothing in it is outstanding, so a long
+ * form can be scanned for what is left rather than re-read. An unanswered
+ * optional question does not hold a section back.
+ */
+function markCompleteSections(v) {
+  const state = new Map();
+  for (const f of SCHEMA.fields) {
+    if (!isActive(f, v)) continue;
+    const key = f.section || '';
+    const s = state.get(key) || { total: 0, done: 0 };
+    s.total++;
+    if (!checkField(f, v[f.name], v)) s.done++;
+    state.set(key, s);
+  }
+  document.querySelectorAll('.section[data-section]').forEach((el) => {
+    const s = state.get(el.dataset.section);
+    el.classList.toggle('complete', !!s && s.total > 0 && s.done === s.total);
+  });
 }
 
 /* ---------- events ---------- */
