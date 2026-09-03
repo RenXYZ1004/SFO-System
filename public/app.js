@@ -317,6 +317,7 @@ function renderSections() {
   if (sd) sd.innerHTML = panelFields(SD_PANEL).map(renderField).join('');
 
   mountPaymentInfo();
+  mountSizeGuide();
   mountSdSummary();
 }
 
@@ -339,7 +340,7 @@ function mountPaymentInfo() {
   if (!tpl || !body) return;
 
   body.prepend(tpl.content.cloneNode(true));
-  body.querySelectorAll('.pay-shots .shot[data-file]').forEach(wirePayImage);
+  body.querySelectorAll('.shot[data-file]').forEach(wireImageSlot);
 
   refreshPaymentInfo();
 
@@ -403,23 +404,29 @@ function refreshPaymentInfo() {
 }
 
 /**
- * Whoever drops the payment images in is working from a phone or a scanner,
+ * A reference picture the organisers drop in later — the bank account card,
+ * the shirt size chart. Whoever adds it is working from a phone or a scanner,
  * not from the README, so the tile tries the sensible spellings of its
  * filename in turn — hyphen or underscore, jpg or png — and only gives up
  * (showing the "coming soon" placeholder) once none of them exists.
+ *
+ * data-file holds the path without an extension, e.g. "/shirt/shirt-size".
  */
-const PAY_IMAGE_EXTENSIONS = ['jpg', 'png', 'jpeg', 'webp'];
+const IMAGE_EXTENSIONS = ['jpg', 'png', 'jpeg', 'webp'];
 
-function payImageCandidates(base) {
+function imageCandidates(basePath) {
+  const slash = basePath.lastIndexOf('/');
+  const dir = basePath.slice(0, slash + 1);
+  const base = basePath.slice(slash + 1);
   const names = base.includes('-') ? [base, base.replace(/-/g, '_')] : [base];
-  return names.flatMap((n) => PAY_IMAGE_EXTENSIONS.map((ext) => `/payment/${n}.${ext}`));
+  return names.flatMap((n) => IMAGE_EXTENSIONS.map((ext) => `${dir}${n}.${ext}`));
 }
 
-function wirePayImage(figure) {
+function wireImageSlot(figure) {
   const img = figure.querySelector('img');
   if (!img) return;
 
-  const queue = payImageCandidates(figure.dataset.file);
+  const queue = imageCandidates(figure.dataset.file);
   let i = 0;
 
   const next = () => {
@@ -441,6 +448,25 @@ function wirePayImage(figure) {
   });
 
   next();
+}
+
+/**
+ * Drops the shirt size chart inside the shirt-size question itself, so the
+ * measurements are in front of the reader while they pick — not in a separate
+ * card they have to go looking for.
+ */
+function mountSizeGuide() {
+  const tpl = $('tpl-shirt-guide');
+  const field = document.querySelector('.field[data-for="shirt_size"]');
+  if (!tpl || !field) return;
+
+  // Goes just before the error line, so a validation message stays next to
+  // the chips. A choice question wraps its own in a <fieldset>, so the anchor
+  // decides the parent rather than the other way round.
+  const err = field.querySelector('.err-msg');
+  const parent = err?.parentNode || field;
+  parent.insertBefore(tpl.content.cloneNode(true), err ?? null);
+  field.querySelectorAll('.shot[data-file]').forEach(wireImageSlot);
 }
 
 /**

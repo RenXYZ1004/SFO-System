@@ -126,6 +126,7 @@ switch to a Gmail App Password — the mailer takes that path automatically.
 | `public/index.html` `styles.css` `app.js` | the cloned form UI (light + dark) |
 | `public/docs/` | Waiver of Liability + Health Declaration PDFs, linked from the intro |
 | `public/payment/` | the bank-transfer image shown in the Payment section |
+| `public/shirt/` | the shirt size chart shown inside the shirt-size question |
 | `tools/fetch-form-schema.js` | regenerates `form-schema.js` from the live form |
 | `tools/import-form-source.js` | same, from a saved page or pasted payload |
 | `lib/parse-form.js` | shared Google Forms payload parser |
@@ -172,11 +173,17 @@ and an employee's registration never carries a receipt.
 signed documents, keeping the filenames, or the links on the front page will
 serve the placeholders.
 
-`public/payment/` holds the bank-transfer image. Its filename is matched
-loosely (`bank-transfer`, hyphen or underscore, `.jpg` `.png` `.jpeg` or
-`.webp`), so a file can go in as it came off the phone; with no image the
-tile shows an "Image coming soon" placeholder. See each folder's
-`README.txt`.
+`public/payment/bank-transfer.<ext>` and `public/shirt/shirt-size.<ext>` are
+reference pictures the organisers drop in later. Both go through the same
+slot: `data-file` on the `<figure>` names the path without an extension, and
+the page tries each sensible spelling in turn — hyphen or underscore, `.jpg`
+`.png` `.jpeg` or `.webp` — so a file can go in as it came off the phone or
+the scanner. Neither is cropped, both get a "Full size" link, and a slot with
+no file shows an "Image coming soon" placeholder so the page works either way.
+See each folder's `README.txt`.
+
+To add another such picture, drop a `<figure class="shot" data-file="/dir/name">`
+into a template and call `wireImageSlot()` on it.
 
 ### After changing the questions
 
@@ -200,6 +207,31 @@ and `api/staff-data.js` both read, so nothing hard-codes the answer text.
 `GET /api/staff-data?type=employee` and `?type=public` apply the same filter
 server-side; the counts are always taken over the whole table, so they stay
 meaningful while a search narrows the rows.
+
+### Export
+
+**Export CSV** hands the finance office a spreadsheet instead of a screenshot.
+It exports the tab you are on, paging past the 50 rows shown on screen, and
+picks its columns to suit:
+
+| Tab | Columns |
+|---|---|
+| Employees | employee number, department/office and the typed authorisation, plus the runner's own details for matching |
+| Non-employees / Everyone | the runner's details and the proof-of-payment link |
+
+The file is UTF-8 **with a BOM**, so Excel renders "Las Piñas" rather than
+mojibake, and every cell is quoted. A value a spreadsheet would execute
+(`=`, `@`, or a `+`/`-` that is not a plain number) is prefixed with an
+apostrophe — registrations are user input and this file is opened by someone
+in finance. A `+63` phone number is left alone.
+
+The export always covers the whole group, never just the current search; when
+a search is active the confirmation message says so.
+
+**The export carries no amount.** Nothing in the form captures a registration
+fee, so payroll has to apply the per-category fee themselves — the race
+category is in the file for that. Add a fee field to `lib/form-schema.js` and
+it will appear in the export automatically.
 
 Registrations taken before employees were exempted still have a receipt on
 file. The dashboard shows whatever is stored rather than what the rules say

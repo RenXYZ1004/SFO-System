@@ -82,6 +82,7 @@ function wireApp() {
   });
   $('clear').addEventListener('click', () => { $('q').value = ''; load(); $('q').focus(); });
   $('refresh').addEventListener('click', () => load($('q').value.trim()));
+  $('export').addEventListener('click', exportCsv);
 
   document.querySelectorAll('.seg').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -133,7 +134,14 @@ async function load(q = '') {
 }
 
 /** Keeps each tab's count in step, whichever group is being shown. */
+const EXPORT_LABELS = {
+  all: 'Export all (CSV)',
+  public: 'Export non-employees (CSV)',
+  employee: 'Export employees (CSV)',
+};
+
 function renderSegments(d) {
+  $('export-label').textContent = EXPORT_LABELS[TYPE];
   const seg = d.segments;
   $('seg-all').textContent = d.total ?? '—';
   $('seg-public').textContent = seg ? seg.public : '—';
@@ -265,9 +273,154 @@ function showDetail(r) {
   if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
 }
 
-function notice(msg) {
+/** kind: '' for a problem (the default), 'ok' for something that went right. */
+function notice(msg, kind = '') {
   const n = $('notice');
   if (!msg) { n.hidden = true; return; }
+  n.className = 'banner' + (kind ? ' ' + kind : '');
   n.textContent = msg;
   n.hidden = false;
+}
+
+/* ---------- CSV export ---------- */
+
+/**
+ * Hands the finance office a spreadsheet rather than a screenshot.
+ *
+ * On the Employees tab the columns are the ones payroll actually needs to
+ * raise a deduction — employee number, department, and the typed
+ * authorisation — with the runner's own details alongside for matching. On
+ * the other tabs the receipt link takes their place, since that is what a
+ * non-employee's payment has to be checked against.
+ */
+const EXPORT_COLUMNS = {
+  employee: [
+    'Employee full name', 'Employee number', 'Department / Office',
+    'Salary deduction authorization', 'Full name', 'Email address',
+    'Contact number', 'Race category', 'Shirt size',
+  ],
+  other: [
+    'Full name', 'Email address', 'Contact number', 'Race category',
+    'Shirt size', 'Team / Organization', 'Payment method', 'Proof of payment',
+  ],
+};
+
+/**
+ * A cell that opens as text in Excel and Sheets.
+ *
+ * Everything is quoted, and a value a spreadsheet would evaluate is
+ * prefixed with an apostrophe so it cannot run — a registration form is
+ * user input and this file is opened by somebody in the finance office,
+ * where "=" and "+cmd|..." are a real vector.
+ *
+ * A leading + or - on a plain phone number is not one of those, so it is
+ * left alone rather than stamping an apostrophe through every +63 number.
+ */
+const PLAIN_NUMBER = /^[+-][0-9 ()\-.]*$/;
+
+function csvCell(value) {
+  const v = String(value ?? '');
+  const executable = /^[=@\t\r]/.test(v)
+    || (/^[+-]/.test(v) && !PLAIN_NUMBER.test(v));
+  const cell = executable ? "'" + v : v;
+  return '"' + cell.replace(/"/g, '""') + '"';
+}
+
+// Exposed so the escaping above can be exercised directly by a test. It is a
+// pure string function — it reads nothing and returns no data.
+window.__cell = csvCell;
+
+const csvDate = (iso) => {
+  try {
+    // Manila local time, sortable: 2026-11-22 08:05
+    const p = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date(iso)).reduce((a, x) => (a[x.type] = x.value, a), {});
+    return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+  } catch { return String(iso); }
+};
+
+/** Pulls every row of the current group, not just the page on screen. */
+async function fetchAllForExport() {
+  const rows = [];
+  const pageSize = 200;
+  for (let offset = 0; ; offset += pageSize) {
+    const params = new URLSearchParams({ limit: String(pageSize), offset: String(offset) });
+    if (TYPE !== 'all') params.set('type', TYPE);
+    const res = await fetch(`/api/staff-data?${params}`);
+    if (res.status === 401) { location.reload(); return null; }
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error || 'Could not read registrations.');
+    rows.push(...(d.rows || []));
+    if ((d.rows || []).length < pageSize) return rows;
+    if (rows.length > 10000) return rows;         // hard stop, just in case
+  }
+}
+
+async function exportCsv() {
+  const btn = $('export');
+  const label = $('export-label');
+  const was = label.textContent;
+  btn.disabled = true;
+  label.textContent = 'Preparing…';
+  notice();
+
+  try {
+    const rows = await fetchAllForExport();
+    if (!rows) return;
+    if (!rows.length) { notice('There is nothing to export in this group yet.'); return; }
+
+    // Only include columns the schema still has, so a renamed question drops
+    // out of the file rather than exporting a column of blanks.
+    const known = new Set(FIELDS.map((f) => f.label));
+    const columns = (TYPE === 'employee' ? EXPORT_COLUMNS.employee : EXPORT_COLUMNS.other)
+      .filter((label) => known.has(label));
+
+    const header = ['Reference', 'Registered', 'Type', ...columns];
+    const lines = [header.map(csvCell).join(',')];
+
+    for (const r of rows) {
+      const a = r.answers || {};
+      lines.push([
+        csvCell(r.reference),
+        csvCell(csvDate(r.created_at)),
+        csvCell(isEmployee(r) ? 'Employee' : 'Non-employee'),
+        ...columns.map((label) => csvCell(a[label] ?? '')),
+      ].join(','));
+    }
+
+    // BOM first: without it Excel opens UTF-8 as Latin-1 and mangles every
+    // "ñ" in a Filipino name or address.
+    const blob = new Blob(['\uFEFF' + lines.join('\r\n') + '\r\n'],
+      { type: 'text/csv;charset=utf-8' });
+    const name = TYPE === 'employee' ? 'salary-deduction'
+      : TYPE === 'public' ? 'non-employees' : 'all-registrations';
+    download(blob, `sgen-run-2026-${name}-${csvDate(Date.now()).slice(0, 10)}.csv`);
+
+    // The file covers the whole group, so say so when the table on screen is
+    // showing a narrower set — otherwise a searched-for name looks like the
+    // whole export.
+    const searching = $('q').value.trim() !== '';
+    notice(`Exported ${rows.length} ${rows.length === 1 ? 'registration' : 'registrations'}` +
+           (searching ? ` — every ${TYPE_NAMES[TYPE].replace(/s$/, '')} entry, not just the search results.` : '.'),
+           'ok');
+  } catch (err) {
+    notice(err.message || 'Could not build the export.');
+  } finally {
+    btn.disabled = false;
+    label.textContent = was;
+  }
+}
+
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoked on the next tick so the download has taken the reference.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

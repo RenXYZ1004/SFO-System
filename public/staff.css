@@ -177,3 +177,16 @@ body.staff { background: var(--bg); }
   .stat-n{font-size:21px}
   .stat-k{font-size:11px;line-height:1.35}
 }
+
+/* ---------- export ---------- */
+.table-actions{display:flex;align-items:center;gap:8px}
+#export{display:inline-flex;align-items:center;gap:6px}
+.export-icon{display:inline-flex}
+#export:disabled{opacity:.6;cursor:default}
+.banner.ok{
+  border-color:rgba(15,123,69,.35);background:rgba(15,123,69,.10);color:var(--ok);
+}
+@media (max-width:560px){
+  .table-head{flex-wrap:wrap;gap:8px}
+  .table-actions{width:100%;justify-content:flex-end}
+}
