@@ -291,7 +291,9 @@ function isActive(f, all) {
   const cond = f.showIf;
   if (!cond) return true;
   const current = ((all || values())[cond.field] || '').trim();
-  return cond.equals === undefined ? current !== '' : current === cond.equals;
+  if (cond.equals !== undefined) return current === cond.equals;
+  if (cond.notEquals !== undefined) return current !== cond.notEquals;
+  return current !== '';
 }
 
 function renderSections() {
@@ -366,17 +368,11 @@ const label = (btn, text) => {
  * hint on the upload question — describe that method and no other.
  */
 const PAYMENT_GUIDE = {
-  'GCash': {
-    note: 'Send the fee to the GCash account above, then upload the confirmation screenshot as your proof of payment.',
-    upload: 'Screenshot of your GCash confirmation. Max 4 MB.',
-  },
   'Bank transfer': {
-    note: 'Deposit or transfer the fee to the PNB account above, then upload the deposit slip or transfer receipt.',
-    upload: 'Photo or PDF of your deposit slip or transfer receipt. Max 4 MB.',
+    note: 'Deposit or transfer the fee to the PNB account above, then upload the deposit slip or transfer receipt below.',
   },
   'Employee': {
-    note: 'Nothing to send now — the fee is taken from your payroll in three equal deductions. Upload a screenshot of your completed salary-deduction details instead.',
-    upload: 'Screenshot of your completed salary-deduction details. Max 4 MB.',
+    note: 'Nothing to send — the fee is taken from your payroll in three equal deductions, starting November 15, 2026. Your authorisation above is the record, so there is no receipt to upload.',
   },
 };
 
@@ -404,10 +400,6 @@ function refreshPaymentInfo() {
       : 'Choose your payment method below, then upload the receipt as your proof of payment.';
   }
 
-  // The upload question's hint falls back to whatever the schema says.
-  const hint = $('h_proof_of_payment');
-  const field = SCHEMA.fields.find((f) => f.name === 'proof_of_payment');
-  if (hint && field) hint.textContent = guide ? guide.upload : (field.help || '');
 }
 
 /**
@@ -641,7 +633,38 @@ function updateProgress() {
   $('fill').style.width = `${pct}%`;
   $('track').setAttribute('aria-valuenow', String(pct));
 
+  showOnlyActiveFields(v);
   markCompleteSections(v);
+}
+
+/**
+ * Takes a question off the page entirely while it does not apply — an
+ * employee paying by payroll deduction has no receipt to show, so being
+ * asked for one at all is the confusing part, not being asked to skip it.
+ */
+function showOnlyActiveFields(v) {
+  for (const f of SCHEMA.fields) {
+    if (!f.showIf || f.panel) continue;      // panel questions live in a dialog
+    const el = document.querySelector(`.field[data-for="${cssEsc(f.name)}"]`);
+    if (!el) continue;
+
+    const active = isActive(f, v);
+    if (el.hidden === !active) continue;      // already in the right state
+    el.hidden = !active;
+
+    // Don't leave a receipt attached to a registration that no longer wants
+    // one: it would never be recorded, and seeing it again on switching back
+    // implies it was kept.
+    if (!active) uploadResetters.get(f.name)?.();
+  }
+
+  // The rule under the final question of a section is drawn by :last-child,
+  // which does not know about hidden siblings.
+  document.querySelectorAll('.section-body').forEach((body) => {
+    const fields = [...body.querySelectorAll('.field')];
+    fields.forEach((el) => el.classList.remove('last-shown'));
+    fields.filter((el) => !el.hidden).at(-1)?.classList.add('last-shown');
+  });
 }
 
 /**
@@ -730,8 +753,9 @@ function wireEvents() {
 const MAX_UPLOAD = 4 * 1024 * 1024;
 const kb = (n) => (n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
-// Each file field registers a reset callback so the whole form can be cleared.
-const uploadResetters = [];
+// Each file field registers a reset callback, so the form can clear all of
+// them at once or drop just the one whose question stopped being asked.
+const uploadResetters = new Map();
 function resetUploads() {
   uploadResetters.forEach((fn) => fn());
 }
@@ -790,7 +814,7 @@ function wireUpload(f) {
     updateProgress();
   };
 
-  uploadResetters.push(reset);
+  uploadResetters.set(f.name, reset);
 
   $(`${id}_remove`).addEventListener('click', () => {
     reset();

@@ -125,7 +125,7 @@ switch to a Gmail App Password — the mailer takes that path automatically.
 | `api/schema.js` | serves the schema to the front-end |
 | `public/index.html` `styles.css` `app.js` | the cloned form UI (light + dark) |
 | `public/docs/` | Waiver of Liability + Health Declaration PDFs, linked from the intro |
-| `public/payment/` | GCash / bank transfer / salary-deduction images shown in the Payment section |
+| `public/payment/` | the bank-transfer image shown in the Payment section |
 | `tools/fetch-form-schema.js` | regenerates `form-schema.js` from the live form |
 | `tools/import-form-source.js` | same, from a saved page or pasted payload |
 | `lib/parse-form.js` | shared Google Forms payload parser |
@@ -137,13 +137,12 @@ switch to a Gmail App Password — the mailer takes that path automatically.
 
 ## Payment methods
 
-Three options, set in `lib/form-schema.js` under `payment_method`:
+Two options, set in `lib/form-schema.js` under `payment_method`:
 
 | Option | What happens |
 |---|---|
-| GCash | pay, then upload the receipt as proof of payment |
-| Bank transfer | PNB account details are shown at the top of the Payment section |
-| Employee | opens the **SISC Salary Deduction** pop-up: employee full name, employee number, department/office and a typed payroll authorisation |
+| Bank transfer | PNB account details are shown at the top of the Payment section; a receipt must be uploaded |
+| Employee | opens the **SISC Salary Deduction** pop-up — employee full name, employee number, department/office and a typed payroll authorisation — and the proof-of-payment question is not asked at all |
 
 The four salary-deduction questions are ordinary schema fields carrying two
 extra keys:
@@ -153,11 +152,19 @@ panel: 'salary-deduction',                                // drawn in the pop-up
 showIf: { field: 'payment_method', equals: 'Employee' },  // only asked of employees
 ```
 
+The proof-of-payment question carries the mirror image of that rule, so a
+payroll deduction never asks for a receipt that does not exist:
+
+```js
+showIf: { field: 'payment_method', notEquals: 'Employee' },
+```
+
 `isActive()` in `lib/form-schema.js` is the single rule for whether a
 conditional question applies, and both the page and `validate()` use it — so
 they cannot disagree about what is required. `api/register.js` blanks any
-answer to a question that was not asked, so switching back to GCash never
-leaves payroll details in the Sheet or the confirmation email.
+answer to a question that was not asked, so switching back to a bank
+transfer never leaves payroll details in the Sheet or the confirmation email,
+and an employee's registration never carries a receipt.
 
 ### Replacing the placeholder assets
 
@@ -165,10 +172,10 @@ leaves payroll details in the Sheet or the confirmation email.
 signed documents, keeping the filenames, or the links on the front page will
 serve the placeholders.
 
-`public/payment/` holds the GCash and bank-transfer images. Filenames are
-matched loosely (`gcash` / `bank-transfer`, hyphen or underscore, `.jpg`
-`.png` `.jpeg` or `.webp`), so a file can go in as it came off the phone; a
-method with no image shows an "Image coming soon" tile. See each folder's
+`public/payment/` holds the bank-transfer image. Its filename is matched
+loosely (`bank-transfer`, hyphen or underscore, `.jpg` `.png` `.jpeg` or
+`.webp`), so a file can go in as it came off the phone; with no image the
+tile shows an "Image coming soon" placeholder. See each folder's
 `README.txt`.
 
 ### After changing the questions
@@ -177,6 +184,26 @@ method with no image shows an "Image coming soon" tile. See each folder's
 adding or reordering a field changes the column layout. Run `npm run sheet:init`
 against a fresh tab, or update the header row by hand — rows written before the
 change keep the old column order.
+
+---
+
+## Staff dashboard
+
+`/staff` splits registrations into **Employees** (paying by salary deduction)
+and **Non-employees**, because the two are chased up differently — payroll on
+one side, a receipt on the other. Tabs switch between them and carry live
+counts, every row is labelled, and the split is also shown as two figures at
+the top. `FORM.employeeField` / `FORM.employeeValue` in `lib/form-schema.js`
+define what counts as an employee; `employeeQuestion()` is what the dashboard
+and `api/staff-data.js` both read, so nothing hard-codes the answer text.
+
+`GET /api/staff-data?type=employee` and `?type=public` apply the same filter
+server-side; the counts are always taken over the whole table, so they stay
+meaningful while a search narrows the rows.
+
+Registrations taken before employees were exempted still have a receipt on
+file. The dashboard shows whatever is stored rather than what the rules say
+today, so those rows keep their "Open receipt" link.
 
 ---
 

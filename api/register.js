@@ -47,7 +47,8 @@ export default async function handler(req, res) {
 
   // Conditional questions that were not asked are stored blank, so a runner
   // who tried "Employee", filled the salary-deduction panel, then switched
-  // back to GCash cannot leave stale payroll details in the sheet or email.
+  // back to a bank transfer cannot leave stale payroll details in the sheet
+  // or email — and an employee's registration never carries a receipt.
   const values = {};
   for (const f of FORM.fields) {
     const v = body[f.name];

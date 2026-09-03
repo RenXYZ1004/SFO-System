@@ -46,6 +46,20 @@
 
     <div class="stats" id="stats"></div>
 
+    <!-- Employees are settled by payroll and non-employees by receipt, so the
+         two groups are worked separately rather than filtered by eye. -->
+    <div class="segs" role="tablist" aria-label="Registration type">
+      <button type="button" class="seg on" data-type="all" role="tab" aria-selected="true">
+        <span class="seg-k">Everyone</span><span class="seg-n" id="seg-all">—</span>
+      </button>
+      <button type="button" class="seg" data-type="public" role="tab" aria-selected="false">
+        <span class="seg-k">Non-employees</span><span class="seg-n" id="seg-public">—</span>
+      </button>
+      <button type="button" class="seg" data-type="employee" role="tab" aria-selected="false">
+        <span class="seg-k">Employees</span><span class="seg-n" id="seg-employee">—</span>
+      </button>
+    </div>
+
     <div class="search-card">
       <label class="search-label" for="q">Find a runner</label>
       <div class="search-row">
@@ -70,7 +84,7 @@
         <table class="reg-table">
           <thead>
             <tr>
-              <th>Reference</th><th>Name</th><th>Category</th>
+              <th>Reference</th><th>Name</th><th>Type</th><th>Category</th>
               <th>Shirt</th><th>Registered</th><th>Status</th>
             </tr>
           </thead>

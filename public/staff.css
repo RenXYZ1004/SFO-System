@@ -125,3 +125,55 @@ body.staff { background: var(--bg); }
   .staff-bar h1{font-size:18px}
   .reg-table th,.reg-table td{padding:10px 12px}
 }
+
+/* ============================================================
+   Employee / non-employee split
+   ============================================================ */
+.segs{
+  display:flex;gap:6px;margin:0 0 16px;padding:5px;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow);overflow-x:auto;
+}
+.seg{
+  flex:1 1 0;min-width:132px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 14px;border:0;border-radius:9px;cursor:pointer;
+  background:transparent;color:var(--ink-2);
+  font:600 13.5px var(--font);white-space:nowrap;
+  transition:background .15s,color .15s;
+}
+.seg:hover{background:var(--accent-soft);color:var(--accent)}
+.seg:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-ring)}
+.seg.on{background:var(--accent);color:var(--accent-ink)}
+.seg-n{
+  font-weight:800;font-variant-numeric:tabular-nums;font-size:12.5px;
+  padding:1px 8px;border-radius:99px;
+  background:var(--accent-soft);color:var(--accent);
+}
+.seg.on .seg-n{background:rgba(255,255,255,.22);color:var(--accent-ink)}
+
+.pill.emp{background:var(--accent-soft);color:var(--accent)}
+.pill.pub{background:rgba(128,128,128,.14);color:var(--ink-2)}
+
+.detail-kind{
+  margin:0 0 14px;padding:9px 13px;border-radius:9px;
+  font-size:13px;font-weight:700;
+}
+.detail-kind.emp{background:var(--accent-soft);color:var(--accent)}
+.detail-kind.pub{background:rgba(128,128,128,.12);color:var(--ink-2)}
+.detail-kind-note{font-weight:500;opacity:.85}
+
+@media (max-width:560px){
+  /* Three tabs will not sit side by side with their counts on a phone, so the
+     count moves under the label rather than the row scrolling sideways. */
+  .segs{overflow:visible;gap:4px;padding:4px}
+  .seg{flex-direction:column;gap:3px;min-width:0;padding:8px 4px;font-size:12px}
+  .seg-n{font-size:12px;padding:0 7px}
+
+  /* Eight figures stacked two-up is most of a screen; three-up keeps the
+     table in reach. */
+  .stats{gap:8px}
+  .stat{flex:1 1 92px;padding:11px 12px}
+  .stat-n{font-size:21px}
+  .stat-k{font-size:11px;line-height:1.35}
+}

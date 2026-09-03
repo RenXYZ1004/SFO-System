@@ -415,7 +415,7 @@ body{
 
 /* ---------- fields ---------- */
 .field{padding:18px 0;border-bottom:1px solid var(--line)}
-.field:last-child{border-bottom:0}
+.field:last-child,.field.last-shown{border-bottom:0}
 .q{display:block;font-size:15px;font-weight:600;margin:0 0 3px;color:var(--ink)}
 .req{color:var(--err);margin-left:2px}
 .optional{color:var(--muted);font-weight:400;font-size:13px;margin-left:6px}
@@ -657,10 +657,12 @@ a:hover{text-decoration:underline}
   font-weight:800;color:var(--accent);
 }
 
-/* Two tiles, side by side at every width. The one matching the chosen method
-   is brought forward and the other steps back, so the card only ever asks the
-   reader to look at one thing. */
-.pay-shots{grid-template-columns:1fr 1fr;gap:11px}
+/* The artwork and the copyable details are the same information in two forms,
+   so they sit side by side rather than stacked — and fold to one column when
+   there is no room for that. */
+.pay-grid{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr);gap:13px;align-items:start}
+@media (max-width:560px){.pay-grid{grid-template-columns:1fr}}
+.pay-shots{grid-template-columns:1fr;gap:11px}
 .pay-shots .shot{
   opacity:1;transform:none;animation:none;
   background:var(--card);
@@ -708,7 +710,7 @@ a:hover{text-decoration:underline}
 /* Account details read as a card of their own — they are the one thing on
    this screen a runner has to copy exactly. */
 .bank-card{
-  margin:14px 0 0;padding:14px 15px;
+  margin:0;padding:14px 15px;
   border:1px solid var(--line-2);border-radius:11px;background:var(--card);
 }
 .bank-card-h{

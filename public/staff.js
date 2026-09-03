@@ -4,6 +4,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
 
 let FIELDS = [];
 let ROWS = [];
+// Which group the dashboard is showing: 'all', 'public' or 'employee'.
+let TYPE = 'all';
+// { label, value } — the answer that marks a registration as an employee's.
+let EMPLOYEE = null;
 
 start();
 
@@ -78,6 +82,19 @@ function wireApp() {
   });
   $('clear').addEventListener('click', () => { $('q').value = ''; load(); $('q').focus(); });
   $('refresh').addEventListener('click', () => load($('q').value.trim()));
+
+  document.querySelectorAll('.seg').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.type === TYPE) return;
+      TYPE = btn.dataset.type;
+      document.querySelectorAll('.seg').forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', String(on));
+      });
+      load($('q').value.trim());
+    });
+  });
   $('detail-close').addEventListener('click', () => $('detail').close());
   $('detail').addEventListener('click', (e) => {
     if (e.target !== $('detail')) return;
@@ -96,7 +113,10 @@ async function load(q = '') {
   $('count').textContent = 'Loading…';
   let d;
   try {
-    const res = await fetch('/api/staff-data' + (q ? `?q=${encodeURIComponent(q)}` : ''));
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (TYPE !== 'all') params.set('type', TYPE);
+    const res = await fetch('/api/staff-data' + (params.size ? `?${params}` : ''));
     if (res.status === 401) return location.reload();   // session expired
     d = await res.json();
   } catch {
@@ -106,14 +126,28 @@ async function load(q = '') {
 
   FIELDS = d.fields || [];
   ROWS = d.rows || [];
+  EMPLOYEE = d.employee || null;
+  renderSegments(d);
   renderStats(d);
   renderRows(d);
+}
+
+/** Keeps each tab's count in step, whichever group is being shown. */
+function renderSegments(d) {
+  const seg = d.segments;
+  $('seg-all').textContent = d.total ?? '—';
+  $('seg-public').textContent = seg ? seg.public : '—';
+  $('seg-employee').textContent = seg ? seg.employee : '—';
 }
 
 function renderStats(d) {
   const cards = [
     ['Total registered', d.total],
   ];
+  if (d.segments) {
+    cards.push(['Non-employees', d.segments.public]);
+    cards.push(['Employees · salary deduction', d.segments.employee]);
+  }
   if (d.breakdown?.category?.counts?.length) {
     for (const c of d.breakdown.category.counts) cards.push([c.value || 'Unspecified', c.n]);
   }
@@ -127,14 +161,25 @@ function renderStats(d) {
   $('stats').innerHTML = html;
 }
 
+/** True when this registration is an SISC employee paying by salary deduction. */
+function isEmployee(r) {
+  return Boolean(EMPLOYEE) && (r.answers || {})[EMPLOYEE.label] === EMPLOYEE.value;
+}
+
+const TYPE_NAMES = { all: 'registrations', public: 'non-employees', employee: 'employees' };
+
 function renderRows(d) {
   const tbody = $('rows');
+  const groupTotal = TYPE === 'all' ? d.total : d.segments?.[TYPE] ?? d.returned;
   $('count').textContent = d.matchedReference
     ? `Exact match for ${d.matchedReference}`
-    : `${d.returned} of ${d.total} shown`;
+    : `${d.returned} of ${groupTotal} ${TYPE_NAMES[TYPE]} shown`;
 
   if (!ROWS.length) {
     tbody.innerHTML = '';
+    $('empty').textContent = $('q').value.trim()
+      ? `No ${TYPE_NAMES[TYPE]} match that search.`
+      : `No ${TYPE_NAMES[TYPE]} yet.`;
     $('empty').hidden = false;
     return;
   }
@@ -149,9 +194,13 @@ function renderRows(d) {
     const status = problem
       ? `<span class="pill bad">${!r.email_sent ? 'no email' : ''}${!r.email_sent && !r.sheet_synced ? ' · ' : ''}${!r.sheet_synced ? 'not in sheet' : ''}</span>`
       : '<span class="pill ok">complete</span>';
+    const kind = isEmployee(r)
+      ? '<span class="pill emp">employee</span>'
+      : '<span class="pill pub">non-employee</span>';
     return `<tr data-i="${i}" tabindex="0">
       <td class="mono">${esc(r.reference)}</td>
       <td>${esc(r.full_name || '—')}</td>
+      <td>${kind}</td>
       <td>${esc(cat ? a[cat] ?? '—' : '—')}</td>
       <td>${esc(shirt ? a[shirt] ?? '—' : '—')}</td>
       <td class="dim">${esc(when(r.created_at))}</td>
@@ -198,7 +247,14 @@ function showDetail(r) {
   if (!r.email_sent) flags.push(`Confirmation email was not sent${r.email_error ? ` — ${esc(r.email_error)}` : ''}.`);
   if (!r.sheet_synced) flags.push(`Not written to the Google Sheet${r.sheet_error ? ` — ${esc(r.sheet_error)}` : ''}.`);
 
+  const kind = isEmployee(r)
+    ? '<p class="detail-kind emp">SISC employee · paying by salary deduction' +
+      (r.proof_url ? '' : ' <span class="detail-kind-note">— no receipt collected</span>') +
+      '</p>'
+    : '<p class="detail-kind pub">Non-employee · paying by bank transfer</p>';
+
   $('detail-body').innerHTML = `
+    ${kind}
     ${flags.length ? `<div class="notice warn">${flags.join('<br>')}</div>` : ''}
     <table class="detail-table"><tbody>
       ${rows}

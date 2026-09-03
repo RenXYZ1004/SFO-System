@@ -186,10 +186,10 @@
         <ol class="checklist">
           <li>Complete all required fields in this form.</li>
           <li>Choose your race category and preferred shirt size.</li>
-          <li>Settle your registration fee through <strong>GCash</strong>,
-              <strong>bank transfer</strong>, or — for SISC employees —
-              <strong>salary deduction</strong>.</li>
-          <li>Upload your proof of payment before submitting.</li>
+          <li>Settle your registration fee by <strong>bank transfer</strong>, or
+              — for SISC employees — through <strong>salary deduction</strong>.</li>
+          <li>Upload your proof of payment before submitting. Employees paying
+              by salary deduction have nothing to upload.</li>
           <li>Read and agree to the <strong>Waiver of Liability</strong> and
               <strong>Health Declaration</strong> before final submission.
               Both open as PDFs:</li>
@@ -253,7 +253,7 @@
           </svg>
         </span>
       </button>
-      <p class="fineprint">Takes about 3 minutes. Have your proof of payment ready.</p>
+      <p class="fineprint">Takes about 3 minutes. Paying by bank transfer? Have your receipt ready.</p>
     </div>
 
   </main>
@@ -304,24 +304,11 @@
       <div class="pay-info">
         <h3 class="pay-h">How to pay</h3>
 
-        <!-- data-method ties each tile to an answer of the payment_method
-             question, so app.js can bring the relevant one forward. -->
+        <!-- data-method ties the tile to an answer of the payment_method
+             question, so app.js can dim it once it no longer applies. -->
+        <div class="pay-grid">
         <div class="shots pay-shots">
-          <figure class="shot" data-method="GCash" data-file="gcash" style="--i:0">
-            <img alt="GCash payment details" loading="lazy">
-            <a class="shot-zoom" target="_blank" rel="noopener" hidden>
-              <span aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
-                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 4h6v6M20 4l-8 8M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
-                </svg>
-              </span>
-              <span class="shot-zoom-text" aria-hidden="true">Full size</span>
-              <span class="sr">View the GCash image at full size</span>
-            </a>
-            <figcaption>GCash</figcaption>
-          </figure>
-          <figure class="shot" data-method="Bank transfer" data-file="bank-transfer" style="--i:1">
+          <figure class="shot" data-method="Bank transfer" data-file="bank-transfer" style="--i:0">
             <img alt="Bank transfer details" loading="lazy">
             <a class="shot-zoom" target="_blank" rel="noopener" hidden>
               <span aria-hidden="true">
@@ -375,6 +362,7 @@
             </div>
           </dl>
         </div>
+        </div>
 
         <p class="pay-note" id="pay-note">
           Choose your payment method below, then upload the receipt as your proof of payment.
@@ -411,8 +399,8 @@
           <p class="sd-please">Please:</p>
           <ul class="sd-steps">
             <li>Fill out all the required fields below.</li>
-            <li>Upload a screenshot of the completed form through the online
-                registration page.</li>
+            <li>Your details below are recorded with your registration — there
+                is nothing further to upload.</li>
             <li>The total registration fee will be divided into
                 <strong>three (3) equal salary deductions</strong>, starting
                 <strong>November 15, 2026</strong>.</li>
