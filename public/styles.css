@@ -886,3 +886,77 @@ a:hover{text-decoration:underline}
   margin:11px 0 4px;font-size:12.5px;color:var(--muted);
   line-height:1.55;text-align:center;
 }
+
+/* ============================================================
+   Mobile — most runners register on a phone
+   ============================================================ */
+
+/* Long unbroken strings are the usual cause of a page that scrolls sideways:
+   the foundation's full name, the account number, an @southville.edu.ph
+   address. Break them rather than hiding the overflow — html{overflow-x}
+   would kill the sticky progress card. The uploaded file's name is not here:
+   .upload-name already truncates with an ellipsis, which is the better answer
+   for a name nobody needs to read in full. */
+.bank dd,.contact a,.doc-name{overflow-wrap:anywhere}
+
+/* Notched and rounded screens: keep content out from under the corners and
+   the home indicator. env() is 0 everywhere else, so nothing else moves. */
+.wrap{
+  padding-left:max(16px,env(safe-area-inset-left));
+  padding-right:max(16px,env(safe-area-inset-right));
+  padding-bottom:calc(40px + env(safe-area-inset-bottom));
+}
+.hero{
+  padding-left:max(20px,env(safe-area-inset-left));
+  padding-right:max(20px,env(safe-area-inset-right));
+}
+@media (max-width:520px){
+  .hero{
+    padding-left:max(18px,env(safe-area-inset-left));
+    padding-right:max(18px,env(safe-area-inset-right));
+  }
+}
+.foot{padding-bottom:calc(34px + env(safe-area-inset-bottom))}
+
+/* A phone's viewport height changes as the address bar hides. dvh tracks it;
+   vh above stays the fallback for browsers without it. */
+@supports (height:100dvh){
+  .modal{max-height:min(86dvh,900px)}
+  .race-shot img{max-height:min(70dvh,560px)}
+}
+
+/* ---------- touch ---------- */
+
+/* A finger is not a cursor: hover effects latch on after a tap and have to
+   be sent back, and every target has to be big enough to hit. */
+@media (hover:none){
+  .shot:hover img{transform:none}
+  .logo:hover{transform:none}
+  .cause-btn:hover{background:var(--card);border-color:var(--accent-ring);transform:none}
+  .cause-btn:hover .cause-btn-chev{transform:none}
+  .btn:hover:not(:disabled){filter:none}
+}
+
+@media (pointer:coarse){
+  /* The grey flash Android paints over a tapped control fights the styling
+     these already have for the same state. */
+  a,button,label,summary,.chip span{-webkit-tap-highlight-color:transparent}
+
+  /* ~44px minimum on everything tappable. */
+  .chip span{padding:12px 18px;font-size:15px}
+  .btn-ghost{padding:12px 16px;font-size:14px}
+  .cause-btn{padding:13px 18px}
+  .modal-close{width:44px;height:44px}
+  .back-link{padding:9px 2px}
+  .doc-link{padding:15px 16px}
+
+  /* Collapsed to an icon at this width, so it needs its size back. */
+  .shot-zoom{
+    min-width:40px;min-height:40px;
+    justify-content:center;padding:0;
+  }
+
+  /* The distances and fees are printed on the poster, so opening it full
+     size is the point of the tile — make the whole thing worth tapping. */
+  .race-note{font-size:13px}
+}
