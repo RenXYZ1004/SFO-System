@@ -14,6 +14,10 @@ let SCHEMA = null;
 init();
 
 async function init() {
+  // Before the schema fetch: the intro page is readable on its own, and the
+  // category poster is the one thing on it that has to survive an API outage.
+  wireRacePoster();
+
   try {
     const res = await fetch('/api/schema');
     if (!res.ok) throw new Error(String(res.status));
@@ -448,6 +452,16 @@ function wireImageSlot(figure) {
   });
 
   next();
+}
+
+/**
+ * The race category poster on the intro page — the distances and their fees.
+ * It is plain markup rather than a template, so it only needs the same
+ * filename-guessing treatment every other drop-in picture gets.
+ */
+function wireRacePoster() {
+  const figure = $('race-poster');
+  if (figure) wireImageSlot(figure);
 }
 
 /**

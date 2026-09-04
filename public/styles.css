@@ -834,3 +834,52 @@ a:hover{text-decoration:underline}
 .size-guide-note{
   margin:11px 0 0;font-size:12.5px;color:var(--muted);line-height:1.55;text-align:center;
 }
+
+/* ============================================================
+   Race categories (intro page)
+   ============================================================ */
+.race .step{background:var(--accent-soft);color:var(--accent)}
+.race-lead{margin:14px 0 13px;color:var(--ink-2);font-size:14.5px;line-height:1.6}
+
+/* The poster carries the distances and the fees, so it is never cropped and
+   never scaled past its own size — a fee that cannot be read is no fee at all.
+   It sits on a card-coloured mat so artwork with a white background does not
+   glow against the dark theme's page. */
+.race-shot{
+  position:relative;display:block;margin:0;
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  background:var(--card);opacity:1;transform:none;animation:none;
+}
+.race-shot img{
+  display:block;width:100%;height:auto;max-height:min(70vh,560px);
+  object-fit:contain;padding:8px;background:var(--card);transition:none;
+}
+.race-shot:hover img{transform:none}
+.race-shot figcaption{
+  text-align:center;font-size:11.5px;font-weight:700;color:var(--ink-2);
+  letter-spacing:.03em;text-transform:uppercase;
+  white-space:normal;overflow:visible;padding:9px 8px;line-height:1.3;
+  border-top:1px solid var(--line);
+}
+/* No artwork yet: the slot keeps its shape and says so, rather than
+   collapsing and leaving the card looking broken. */
+.race-shot.missing::before{
+  aspect-ratio:4/3;content:"Race category poster coming soon";
+  font-size:12.5px;
+}
+
+/* The distances on their own — legible before the poster loads, and the
+   answer to "which ones are there?" without opening the artwork. */
+.race-chips{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+  list-style:none;margin:13px 0 0;padding:0;
+}
+.race-chip{
+  padding:7px 15px;border-radius:99px;
+  background:var(--accent-soft);border:1px solid var(--accent-ring);
+  color:var(--accent);font-size:14px;font-weight:800;letter-spacing:.02em;
+}
+.race-note{
+  margin:11px 0 4px;font-size:12.5px;color:var(--muted);
+  line-height:1.55;text-align:center;
+}
