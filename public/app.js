@@ -14,16 +14,21 @@ let SCHEMA = null;
 init();
 
 async function init() {
-  // Before the schema fetch: the intro page is readable on its own, and the
-  // category poster is the one thing on it that has to survive an API outage.
+  // The intro page stands on its own: none of it needs the schema, so it is
+  // wired before the fetch rather than after. A failed fetch used to return
+  // before this ran, leaving every button on the page dead — and the message
+  // saying why written into #banner, which lives in the form view nobody can
+  // see yet.
   wireRacePoster();
+  wireViews();
+  wireCauses();
 
   try {
     const res = await fetch('/api/schema');
     if (!res.ok) throw new Error(String(res.status));
     SCHEMA = await res.json();
   } catch {
-    return banner('Could not load the registration form. Please refresh the page.');
+    return schemaUnavailable();
   }
 
   // The hero wordmark is styled markup; only replace it if it is not static.
@@ -44,8 +49,6 @@ async function init() {
 
   renderSections();
   wireEvents();
-  wireViews();
-  wireCauses();
   wireSalaryDeduction();
   updateProgress();
 
@@ -415,22 +418,30 @@ function refreshPaymentInfo() {
  * (showing the "coming soon" placeholder) once none of them exists.
  *
  * data-file holds the path without an extension, e.g. "/shirt/shirt-size".
+ * data-ext is optional: the extension the artwork is expected to arrive in,
+ * tried first so the usual case costs one request instead of a 404 and then
+ * a request. The other spellings still follow, so a surprise file works too.
  */
 const IMAGE_EXTENSIONS = ['jpg', 'png', 'jpeg', 'webp'];
 
-function imageCandidates(basePath) {
+function imageCandidates(basePath, preferred) {
   const slash = basePath.lastIndexOf('/');
   const dir = basePath.slice(0, slash + 1);
   const base = basePath.slice(slash + 1);
   const names = base.includes('-') ? [base, base.replace(/-/g, '_')] : [base];
-  return names.flatMap((n) => IMAGE_EXTENSIONS.map((ext) => `${dir}${n}.${ext}`));
+  const exts = IMAGE_EXTENSIONS.includes(preferred)
+    ? [preferred, ...IMAGE_EXTENSIONS.filter((e) => e !== preferred)]
+    : IMAGE_EXTENSIONS;
+  return names.flatMap((n) => exts.map((ext) => `${dir}${n}.${ext}`));
 }
 
 function wireImageSlot(figure) {
   const img = figure.querySelector('img');
-  if (!img) return;
+  // A slot with no data-file is a markup slip, not a reason to stop the script
+  // dead — it just has no picture behind it, which is what "missing" means.
+  if (!img || !figure.dataset.file) { figure.classList.add('missing'); return; }
 
-  const queue = imageCandidates(figure.dataset.file);
+  const queue = imageCandidates(figure.dataset.file, figure.dataset.ext);
   let i = 0;
 
   const next = () => {
@@ -934,6 +945,30 @@ function wireUpload(f) {
   ['dragleave', 'drop'].forEach((ev) =>
     drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
   drop.addEventListener('drop', (e) => handle(e.dataTransfer?.files?.[0]));
+}
+
+/**
+ * The questions could not be fetched, so there is no form to show. Say so on
+ * the intro page — where the reader actually is — and take "Proceed" out of
+ * service rather than sending them to an empty form. The rest of the page is
+ * still worth reading: the date, the venue, the causes, the categories.
+ */
+function schemaUnavailable() {
+  const msg =
+    '<strong>The registration form could not be loaded.</strong> ' +
+    'Please refresh the page. If it keeps happening, email us at the address below.';
+
+  banner(msg);
+  const n = $('intro-notice');
+  if (n) { n.className = 'banner warn'; n.innerHTML = msg; n.hidden = false; }
+
+  const proceed = $('proceed');
+  if (proceed) {
+    proceed.disabled = true;
+    proceed.querySelector('span').textContent = 'Registration unavailable';
+  }
+  const fine = document.querySelector('.fineprint');
+  if (fine) fine.textContent = 'Please refresh the page to try again.';
 }
 
 function banner(html, kind = '') {
