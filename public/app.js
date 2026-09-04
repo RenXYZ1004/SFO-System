@@ -19,7 +19,7 @@ async function init() {
   // before this ran, leaving every button on the page dead — and the message
   // saying why written into #banner, which lives in the form view nobody can
   // see yet.
-  wireRacePoster();
+  wireShots($('race'));
   wireViews();
   wireCauses();
 
@@ -90,7 +90,7 @@ function showView(name, { silent = false } = {}) {
  * beneficiary photos and the payment-method images.
  */
 function wireShots(root) {
-  root.querySelectorAll('.shot img').forEach((img) => {
+  root?.querySelectorAll('.shot img').forEach((img) => {
     const markMissing = () => img.closest('.shot')?.classList.add('missing');
     img.addEventListener('error', markMissing);
     // Cached failures can land before the listener is attached.
@@ -418,30 +418,22 @@ function refreshPaymentInfo() {
  * (showing the "coming soon" placeholder) once none of them exists.
  *
  * data-file holds the path without an extension, e.g. "/shirt/shirt-size".
- * data-ext is optional: the extension the artwork is expected to arrive in,
- * tried first so the usual case costs one request instead of a 404 and then
- * a request. The other spellings still follow, so a surprise file works too.
  */
 const IMAGE_EXTENSIONS = ['jpg', 'png', 'jpeg', 'webp'];
 
-function imageCandidates(basePath, preferred) {
+function imageCandidates(basePath) {
   const slash = basePath.lastIndexOf('/');
   const dir = basePath.slice(0, slash + 1);
   const base = basePath.slice(slash + 1);
   const names = base.includes('-') ? [base, base.replace(/-/g, '_')] : [base];
-  const exts = IMAGE_EXTENSIONS.includes(preferred)
-    ? [preferred, ...IMAGE_EXTENSIONS.filter((e) => e !== preferred)]
-    : IMAGE_EXTENSIONS;
-  return names.flatMap((n) => exts.map((ext) => `${dir}${n}.${ext}`));
+  return names.flatMap((n) => IMAGE_EXTENSIONS.map((ext) => `${dir}${n}.${ext}`));
 }
 
 function wireImageSlot(figure) {
   const img = figure.querySelector('img');
-  // A slot with no data-file is a markup slip, not a reason to stop the script
-  // dead — it just has no picture behind it, which is what "missing" means.
-  if (!img || !figure.dataset.file) { figure.classList.add('missing'); return; }
+  if (!img) return;
 
-  const queue = imageCandidates(figure.dataset.file, figure.dataset.ext);
+  const queue = imageCandidates(figure.dataset.file);
   let i = 0;
 
   const next = () => {
@@ -463,16 +455,6 @@ function wireImageSlot(figure) {
   });
 
   next();
-}
-
-/**
- * The race category poster on the intro page — the distances and their fees.
- * It is plain markup rather than a template, so it only needs the same
- * filename-guessing treatment every other drop-in picture gets.
- */
-function wireRacePoster() {
-  const figure = $('race-poster');
-  if (figure) wireImageSlot(figure);
 }
 
 /**

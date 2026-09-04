@@ -28,7 +28,7 @@
       ]
     },
     {
-      "source": "/(logos|causes|payment|shirt)/(.*)",
+      "source": "/(logos|causes|payment|shirt|race)/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

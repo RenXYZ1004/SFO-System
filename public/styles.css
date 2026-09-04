@@ -867,6 +867,9 @@ a:hover{text-decoration:underline}
   aspect-ratio:4/3;content:"Race category poster coming soon";
   font-size:12.5px;
 }
+/* The href is in the markup, so with no poster there yet the pill would
+   offer a full-size view of a 404. Hide it until there is one. */
+.race-shot.missing .shot-zoom{display:none}
 
 /* The distances on their own — legible before the poster loads, and the
    answer to "which ones are there?" without opening the artwork. */
