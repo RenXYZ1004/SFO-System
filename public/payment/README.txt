@@ -1,21 +1,14 @@
-The payment-method image shown in the "How to pay" card on the registration
-screen. There is one, for the only method that involves sending money:
+The picture shown with the payment method on the registration screen.
 
-  bank-transfer.<ext>   the PNB account card
+  bank_transfer.png
 
-<ext> can be jpg, png, jpeg or webp, and an underscore works as well as a
-hyphen — bank_transfer.png is found just as bank-transfer.jpg is. The page
-tries each spelling in turn, so the file can go in exactly as it came off the
-phone or the scanner.
+Bank transfer is the only method with anything to show: SISC employees
+paying by salary deduction have no account to pay into. The PNB account
+number is also written out beside this image, in the markup, so the details
+are readable and copyable even before the picture is added.
 
-The image is shown whole, never cropped, in a square tile beside the same
-details as copyable text, with a "Full size" link for reading it properly.
-Square artwork fits best; around 1000x1000 is plenty. Keep it under about
-300 KB so the section stays fast on mobile data.
+That exact name and extension — the page asks for this one file, nothing
+else. It is shown uncropped in a square tile.
 
-With no file here the tile shows an "Image coming soon" placeholder, so the
-page works either way — the PNB account details beside it are text in
-public/index.html, not part of the picture.
-
-SISC employees paying by salary deduction send nothing, so they have no image
-and are not asked for a receipt.
+With no file here the tile shows an "Image coming soon" placeholder and the
+account details beside it still read normally.

@@ -234,9 +234,8 @@
         <ol class="checklist">
           <li>Complete all required fields in this form.</li>
           <li>Choose your race category and preferred shirt size.</li>
-          <li>Settle your registration fee through <strong>GCash</strong>,
-              <strong>bank transfer</strong>, or — for SISC employees —
-              <strong>salary deduction</strong>.</li>
+          <li>Settle your registration fee by <strong>bank transfer</strong>, or
+              — for SISC employees — through <strong>salary deduction</strong>.</li>
           <li>Upload your proof of payment before submitting.</li>
           <li>Read and agree to the <strong>Waiver of Liability</strong> and
               <strong>Health Declaration</strong> before final submission.
@@ -346,20 +345,45 @@
 
     <p class="lede-form" id="desc"></p>
 
+    <!-- Cloned into the shirt-size question by app.js, so the measurements
+         are on screen while the size is being chosen. -->
+    <template id="tpl-shirt-guide">
+      <div class="size-guide">
+        <div class="shots size-shots">
+          <figure class="shot">
+            <img src="/shirt/shirt-size.png" loading="lazy" alt="Shirt size chart">
+            <a class="shot-zoom" href="/shirt/shirt-size.png" target="_blank" rel="noopener">
+              <span aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 4h6v6M20 4l-8 8M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
+                </svg>
+              </span>
+              <span class="shot-zoom-text" aria-hidden="true">Full size</span>
+              <span class="sr">View the shirt size chart at full size</span>
+            </a>
+            <figcaption>Size guide</figcaption>
+          </figure>
+        </div>
+        <p class="size-guide-note">
+          Race shirts are unisex. Open the chart at full size to check the
+          measurements before choosing — sizes cannot be swapped on race day.
+        </p>
+      </div>
+    </template>
+
     <!-- Cloned into the "Payment" section by app.js, above the questions,
          so the account details are on screen while the fee is being settled. -->
     <template id="tpl-payment-info">
       <div class="pay-info">
         <h3 class="pay-h">Payment method</h3>
 
-        <!-- data-method ties each tile to an answer of the payment_method
-             question, so app.js can bring the relevant one forward. -->
+        <!-- data-method ties the tile to an answer of the payment_method
+             question, so app.js can step it back once the fee is being
+             settled some other way. Bank transfer is the only method with
+             anything to show: salary deduction has no account to pay into. -->
         <div class="shots pay-shots">
-          <figure class="shot" data-method="GCash" style="--i:0">
-            <img src="/payment/gcash.jpg" alt="GCash payment details" loading="lazy">
-            <figcaption>GCash</figcaption>
-          </figure>
-          <figure class="shot" data-method="Bank transfer" style="--i:1">
+          <figure class="shot" data-method="Bank transfer" style="--i:0">
             <img src="/payment/bank_transfer.png" alt="Bank transfer details" loading="lazy">
             <figcaption>Bank transfer</figcaption>
           </figure>

@@ -85,9 +85,10 @@ function showView(name, { silent = false } = {}) {
 /* ---------- "where does it go?" modal ---------- */
 
 /**
- * A photo slot with no file behind it yet keeps its place in the grid and
- * says so, rather than rendering a broken-image icon. Used by both the
- * beneficiary photos and the payment-method images.
+ * Every picture on the site names its own file in the markup. This is the one
+ * thing they need from script: a slot whose file is not there yet keeps its
+ * place and says so, rather than rendering a broken-image icon. Used by the
+ * beneficiary photos, the race poster, the bank details and the size chart.
  */
 function wireShots(root) {
   root?.querySelectorAll('.shot img').forEach((img) => {
@@ -347,7 +348,7 @@ function mountPaymentInfo() {
   if (!tpl || !body) return;
 
   body.prepend(tpl.content.cloneNode(true));
-  body.querySelectorAll('.shot[data-file]').forEach(wireImageSlot);
+  wireShots(body);
 
   refreshPaymentInfo();
 
@@ -389,7 +390,7 @@ function refreshPaymentInfo() {
 
   document.querySelectorAll('.pay-shots .shot').forEach((tile) => {
     const mine = tile.dataset.method === chosen;
-    // Nothing is dimmed until a method is picked — both are still on offer.
+    // Nothing is dimmed until a method is picked — it is still on offer.
     tile.classList.toggle('on', !!chosen && mine);
     tile.classList.toggle('off', !!chosen && !mine);
   });
@@ -411,53 +412,6 @@ function refreshPaymentInfo() {
 }
 
 /**
- * A reference picture the organisers drop in later — the bank account card,
- * the shirt size chart. Whoever adds it is working from a phone or a scanner,
- * not from the README, so the tile tries the sensible spellings of its
- * filename in turn — hyphen or underscore, jpg or png — and only gives up
- * (showing the "coming soon" placeholder) once none of them exists.
- *
- * data-file holds the path without an extension, e.g. "/shirt/shirt-size".
- */
-const IMAGE_EXTENSIONS = ['jpg', 'png', 'jpeg', 'webp'];
-
-function imageCandidates(basePath) {
-  const slash = basePath.lastIndexOf('/');
-  const dir = basePath.slice(0, slash + 1);
-  const base = basePath.slice(slash + 1);
-  const names = base.includes('-') ? [base, base.replace(/-/g, '_')] : [base];
-  return names.flatMap((n) => IMAGE_EXTENSIONS.map((ext) => `${dir}${n}.${ext}`));
-}
-
-function wireImageSlot(figure) {
-  const img = figure.querySelector('img');
-  if (!img) return;
-
-  const queue = imageCandidates(figure.dataset.file);
-  let i = 0;
-
-  const next = () => {
-    if (i >= queue.length) { figure.classList.add('missing'); return; }
-    img.src = queue[i++];
-  };
-
-  // Only the last failure is a real "no image": the others are just the next
-  // spelling to try, so wireShots' own error handler must not fire first.
-  img.addEventListener('error', next);
-
-  // A QR code or an account card is read, not glanced at, so once one is
-  // really there offer it at its own size.
-  img.addEventListener('load', () => {
-    const zoom = figure.querySelector('.shot-zoom');
-    if (!zoom) return;
-    zoom.href = img.src;
-    zoom.hidden = false;
-  });
-
-  next();
-}
-
-/**
  * Drops the shirt size chart inside the shirt-size question itself, so the
  * measurements are in front of the reader while they pick — not in a separate
  * card they have to go looking for.
@@ -473,7 +427,7 @@ function mountSizeGuide() {
   const err = field.querySelector('.err-msg');
   const parent = err?.parentNode || field;
   parent.insertBefore(tpl.content.cloneNode(true), err ?? null);
-  field.querySelectorAll('.shot[data-file]').forEach(wireImageSlot);
+  wireShots(field);
 }
 
 /**
