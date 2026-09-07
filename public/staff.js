@@ -8,6 +8,9 @@ let ROWS = [];
 let TYPE = 'all';
 // { label, value } — the answer that marks a registration as an employee's.
 let EMPLOYEE = null;
+// The last /api/staff-data payload, so the reset dialog can name the figures
+// it is about to delete without going back to the server for them.
+let LAST = null;
 
 start();
 
@@ -103,6 +106,7 @@ function wireApp() {
     const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     if (!inside) $('detail').close();
   });
+  wireReset();
   $('signout').addEventListener('click', async () => {
     await fetch('/api/staff-login', { method: 'DELETE' });
     location.reload();
@@ -128,6 +132,7 @@ async function load(q = '') {
   FIELDS = d.fields || [];
   ROWS = d.rows || [];
   EMPLOYEE = d.employee || null;
+  LAST = d;
   renderSegments(d);
   renderStats(d);
   renderRows(d);
@@ -341,13 +346,13 @@ const csvDate = (iso) => {
   } catch { return String(iso); }
 };
 
-/** Pulls every row of the current group, not just the page on screen. */
-async function fetchAllForExport() {
+/** Pulls every row of a group, not just the page on screen. */
+async function fetchAllForExport(type = TYPE) {
   const rows = [];
   const pageSize = 200;
   for (let offset = 0; ; offset += pageSize) {
     const params = new URLSearchParams({ limit: String(pageSize), offset: String(offset) });
-    if (TYPE !== 'all') params.set('type', TYPE);
+    if (type !== 'all') params.set('type', type);
     const res = await fetch(`/api/staff-data?${params}`);
     if (res.status === 401) { location.reload(); return null; }
     const d = await res.json();
@@ -377,26 +382,9 @@ async function exportCsv() {
     const columns = (TYPE === 'employee' ? EXPORT_COLUMNS.employee : EXPORT_COLUMNS.other)
       .filter((label) => known.has(label));
 
-    const header = ['Reference', 'Registered', 'Type', ...columns];
-    const lines = [header.map(csvCell).join(',')];
-
-    for (const r of rows) {
-      const a = r.answers || {};
-      lines.push([
-        csvCell(r.reference),
-        csvCell(csvDate(r.created_at)),
-        csvCell(isEmployee(r) ? 'Employee' : 'Non-employee'),
-        ...columns.map((label) => csvCell(a[label] ?? '')),
-      ].join(','));
-    }
-
-    // BOM first: without it Excel opens UTF-8 as Latin-1 and mangles every
-    // "ñ" in a Filipino name or address.
-    const blob = new Blob(['\uFEFF' + lines.join('\r\n') + '\r\n'],
-      { type: 'text/csv;charset=utf-8' });
     const name = TYPE === 'employee' ? 'salary-deduction'
       : TYPE === 'public' ? 'non-employees' : 'all-registrations';
-    download(blob, `sgen-run-2026-${name}-${csvDate(Date.now()).slice(0, 10)}.csv`);
+    download(buildCsv(rows, columns), csvName(name));
 
     // The file covers the whole group, so say so when the table on screen is
     // showing a narrower set — otherwise a searched-for name looks like the
@@ -413,6 +401,52 @@ async function exportCsv() {
   }
 }
 
+/**
+ * One CSV, ready to hand to the browser.
+ *
+ * BOM first: without it Excel opens UTF-8 as Latin-1 and mangles every "ñ"
+ * in a Filipino name or address.
+ */
+function buildCsv(rows, columns) {
+  const header = ['Reference', 'Registered', 'Type', ...columns];
+  const lines = [header.map(csvCell).join(',')];
+
+  for (const r of rows) {
+    const a = r.answers || {};
+    lines.push([
+      csvCell(r.reference),
+      csvCell(csvDate(r.created_at)),
+      csvCell(isEmployee(r) ? 'Employee' : 'Non-employee'),
+      ...columns.map((label) => csvCell(a[label] ?? '')),
+    ].join(','));
+  }
+  return new Blob(['\uFEFF' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+}
+
+const csvName = (what) => `sgen-run-2026-${what}-${csvDate(Date.now()).slice(0, 10)}.csv`;
+
+/**
+ * Every column a backup should carry.
+ *
+ * The tab exports narrow to a hand-picked set of columns, which is right for
+ * payroll and the finance office. A backup is the opposite job — it is the
+ * only copy left once the table has been cleared — so it keeps every question
+ * in the schema, plus any answer key the rows still hold from an older
+ * version of the form.
+ */
+function backupColumns(rows) {
+  const columns = FIELDS.map((f) => f.label);
+  const seen = new Set(columns);
+  for (const r of rows) {
+    for (const key of Object.keys(r.answers || {})) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      columns.push(key);
+    }
+  }
+  return columns;
+}
+
 function download(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -423,4 +457,148 @@ function download(blob, filename) {
   a.remove();
   // Revoked on the next tick so the download has taken the reference.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ---------- reset ---------- */
+
+/**
+ * Clearing the table is the one action here that cannot be taken back, so it
+ * is deliberately slow to reach: a CSV of everything downloads first, and the
+ * delete stays locked until that backup has saved and the phrase below has
+ * been typed exactly. The server checks the phrase again on its side.
+ */
+const RESET_PHRASE = 'I Accept';
+
+// Set once the backup CSV has been handed to the browser. The confirm button
+// checks it as well as the phrase, so a reset can never run unbacked.
+let BACKED_UP = false;
+
+function wireReset() {
+  $('reset').addEventListener('click', openReset);
+  $('reset-close').addEventListener('click', closeReset);
+  $('reset-cancel').addEventListener('click', closeReset);
+  $('reset-retry').addEventListener('click', backupBeforeReset);
+  $('reset-go').addEventListener('click', doReset);
+
+  $('reset-phrase').addEventListener('input', gateResetButton);
+  $('reset-phrase').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || $('reset-go').disabled) return;
+    e.preventDefault();
+    doReset();
+  });
+
+  // Clicking the backdrop cancels, the same as the detail dialog.
+  $('reset-modal').addEventListener('click', (e) => {
+    if (e.target !== $('reset-modal')) return;
+    const r = $('reset-modal').getBoundingClientRect();
+    const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) closeReset();
+  });
+}
+
+function closeReset() {
+  const m = $('reset-modal');
+  if (m.open) m.close(); else m.removeAttribute('open');
+}
+
+function openReset() {
+  BACKED_UP = false;
+  $('reset-phrase').value = '';
+  $('reset-phrase').disabled = true;
+  $('reset-go').disabled = true;
+  $('reset-go').classList.remove('loading');
+  $('reset-err').hidden = true;
+  $('reset-retry').hidden = true;
+  $('reset-scope').innerHTML = resetScopeHtml();
+
+  const m = $('reset-modal');
+  if (typeof m.showModal === 'function') m.showModal(); else m.setAttribute('open', '');
+
+  backupBeforeReset();
+}
+
+/** Spells out what is about to go, using the figures already on screen. */
+function resetScopeHtml() {
+  const total = LAST?.total;
+  if (!total) return 'There are no registrations to delete.';
+  const parts = [];
+  if (LAST.segments) {
+    parts.push(`${LAST.segments.public} non-employee${LAST.segments.public === 1 ? '' : 's'}`);
+    parts.push(`${LAST.segments.employee} employee${LAST.segments.employee === 1 ? '' : 's'}`);
+  }
+  return `Deletes <strong>all ${esc(total)} registration${total === 1 ? '' : 's'}</strong>` +
+    (parts.length ? ` — ${esc(parts.join(' and '))}` : '') +
+    '. Whichever tab is open, everything goes.';
+}
+
+async function backupBeforeReset() {
+  const s = $('reset-backup');
+  $('reset-retry').hidden = true;
+  $('reset-err').hidden = true;
+  s.className = 'reset-step-s';
+  s.textContent = 'Preparing a CSV of every registration…';
+
+  try {
+    const rows = await fetchAllForExport('all');
+    if (!rows) return;                      // session expired, page is reloading
+
+    if (!rows.length) {
+      s.className = 'reset-step-s';
+      s.textContent = 'Nothing to back up — the table is already empty.';
+      return unlockPhrase();
+    }
+
+    const name = csvName('backup');
+    download(buildCsv(rows, backupColumns(rows)), name);
+    s.className = 'reset-step-s good';
+    s.textContent =
+      `Backed up ${rows.length} registration${rows.length === 1 ? '' : 's'} to ${name}.`;
+    unlockPhrase();
+  } catch (err) {
+    s.className = 'reset-step-s bad';
+    s.textContent = `${err.message || 'Could not build the backup.'} Nothing has been deleted.`;
+    $('reset-retry').hidden = false;
+  }
+}
+
+function unlockPhrase() {
+  BACKED_UP = true;
+  $('reset-phrase').disabled = false;
+  $('reset-phrase').focus();
+  gateResetButton();
+}
+
+function gateResetButton() {
+  $('reset-go').disabled = !BACKED_UP || $('reset-phrase').value.trim() !== RESET_PHRASE;
+}
+
+async function doReset() {
+  const btn = $('reset-go');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  $('reset-err').hidden = true;
+
+  try {
+    const res = await fetch('/api/staff-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: $('reset-phrase').value.trim() }),
+    });
+    if (res.status === 401) return location.reload();   // session expired
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error || 'Could not clear the registrations.');
+
+    closeReset();
+    $('q').value = '';
+    await load();
+    notice(`Reset complete — ${d.deleted} registration${d.deleted === 1 ? '' : 's'} deleted. ` +
+           'The backup CSV is in your downloads folder.', 'ok');
+  } catch (err) {
+    const e = $('reset-err');
+    e.textContent = err.message || 'Could not clear the registrations.';
+    e.hidden = false;
+  } finally {
+    btn.classList.remove('loading');
+    gateResetButton();
+  }
 }

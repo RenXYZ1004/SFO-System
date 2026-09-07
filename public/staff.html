@@ -105,6 +105,20 @@
       <p class="empty" id="empty" hidden>No registrations match that search.</p>
     </div>
 
+    <!-- Deliberately kept away from Refresh and Export: this one is not
+         something to reach for by accident. -->
+    <section class="danger-zone">
+      <div class="danger-copy">
+        <h2>Reset registrations</h2>
+        <p>
+          Permanently deletes every registration &mdash; employees and
+          non-employees alike. A CSV backup downloads first, and you will be
+          asked to type a phrase to confirm. There is no undo.
+        </p>
+      </div>
+      <button type="button" class="btn-danger" id="reset">Reset all data</button>
+    </section>
+
   </main>
 </div>
 
@@ -123,6 +137,58 @@
     </button>
   </div>
   <div class="modal-body" id="detail-body"></div>
+</dialog>
+
+<!-- ---------- reset confirmation ---------- -->
+<dialog id="reset-modal" class="modal reset-modal" aria-labelledby="reset-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="reset-title">Reset all registrations</h2>
+      <p class="modal-sub">This cannot be undone.</p>
+    </div>
+    <button type="button" class="modal-close" id="reset-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+           stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="notice warn" id="reset-scope">Checking what is in the table&hellip;</div>
+
+    <ol class="reset-steps">
+      <li class="reset-step">
+        <span class="reset-step-n" aria-hidden="true">1</span>
+        <div class="reset-step-main">
+          <p class="reset-step-t">Take a backup</p>
+          <p class="reset-step-s" id="reset-backup" role="status">
+            Preparing a CSV of every registration&hellip;
+          </p>
+          <button type="button" class="btn-ghost" id="reset-retry" hidden>Try the backup again</button>
+        </div>
+      </li>
+      <li class="reset-step">
+        <span class="reset-step-n" aria-hidden="true">2</span>
+        <div class="reset-step-main">
+          <p class="reset-step-t">Type <code>I Accept</code> to confirm</p>
+          <label class="sr-only" for="reset-phrase">Type I Accept to confirm</label>
+          <input type="text" id="reset-phrase" placeholder="I Accept" disabled
+                 autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off">
+          <p class="reset-step-s">Capitals matter. Available once the backup has saved.</p>
+        </div>
+      </li>
+    </ol>
+
+    <p class="reset-err" id="reset-err" role="alert" hidden></p>
+
+    <div class="reset-foot">
+      <button type="button" class="btn-ghost" id="reset-cancel">Cancel</button>
+      <button type="button" class="btn-danger" id="reset-go" disabled>
+        <span class="btn-label">Delete everything</span>
+        <span class="spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
 </dialog>
 
 <script src="/staff.js" type="module"></script>
