@@ -17,6 +17,11 @@ let proceedBlocked = false;
 
 const agreed = () => Boolean($('agree')?.checked);
 
+// The key the server reads the acceptance under. /api/schema names it, so the
+// wire name lives in lib/form-schema.js alone; the fallback only matters if
+// the schema fetch has failed, in which case there is no form to submit.
+const agreementKey = () => SCHEMA?.agreement?.name || 'waiver_agreed';
+
 init();
 
 async function init() {
@@ -1029,7 +1034,9 @@ async function onSubmit(e) {
     const res = await fetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...v, _hp: '' }),
+      // The waiver ticked on the intro page travels with the answers: the
+      // server refuses a registration without it, and records it as proof.
+      body: JSON.stringify({ ...v, [agreementKey()]: agreed(), _hp: '' }),
     });
     data = await res.json();
   } catch {

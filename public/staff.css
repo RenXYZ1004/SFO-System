@@ -109,6 +109,8 @@ body.staff { background: var(--bg); }
 }
 .pill.ok{background:rgba(15,123,69,.12);color:var(--ok)}
 .pill.bad{background:var(--warn-bg);color:var(--warn-ink)}
+/* Nothing recorded either way — a row from before the waiver box existed. */
+.pill.dim{background:rgba(128,128,128,.14);color:var(--muted)}
 
 /* ---------- detail ---------- */
 .detail-modal{width:min(560px,calc(100vw - 28px))}

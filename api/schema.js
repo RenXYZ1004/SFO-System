@@ -1,4 +1,4 @@
-import { FORM } from '../lib/form-schema.js';
+import { FORM, AGREEMENT } from '../lib/form-schema.js';
 import { dbConfigured } from '../lib/db.js';
 
 /** Feeds the front-end so the page renders straight from the schema. */
@@ -11,6 +11,9 @@ export default function handler(req, res) {
     title: FORM.title,
     description: FORM.description,
     configured: dbConfigured(),
+    // The waiver box lives on the intro page rather than in the questions,
+    // but the page has to submit it under the name the server checks.
+    agreement: { name: AGREEMENT.name, label: AGREEMENT.label },
     fields: FORM.fields.map((f) => ({
       name: f.name,
       label: f.label,

@@ -1,7 +1,7 @@
 The two documents linked from "Before you register" on the front page:
 
-  waiver-of-liability.pdf
-  health-declaration.pdf
+official-waiver.pdf
+
 
 Both filenames are referenced from public/index.html, so replace these files
 in place rather than renaming them.

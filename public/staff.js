@@ -8,6 +8,8 @@ let ROWS = [];
 let TYPE = 'all';
 // { label, value } — the answer that marks a registration as an employee's.
 let EMPLOYEE = null;
+// { name, label } — the waiver box on the intro page, recorded per row.
+let AGREEMENT = null;
 // The last /api/staff-data payload, so the reset dialog can name the figures
 // it is about to delete without going back to the server for them.
 let LAST = null;
@@ -132,6 +134,7 @@ async function load(q = '') {
   FIELDS = d.fields || [];
   ROWS = d.rows || [];
   EMPLOYEE = d.employee || null;
+  AGREEMENT = d.agreement || null;
   LAST = d;
   renderSegments(d);
   renderStats(d);
@@ -242,6 +245,22 @@ function when(iso) {
   } catch { return String(iso); }
 }
 
+/**
+ * What the row records about the waiver.
+ *
+ * Read from the column rather than the answers blob: the blob is keyed by
+ * question label, and a label can be renamed. Rows written before the box
+ * existed have nothing to show, and say so rather than implying a refusal.
+ */
+function waiverProof(r) {
+  if (r.waiver_agreed === undefined || r.waiver_agreed === null) {
+    return { text: 'Not recorded', cls: 'dim', csv: '' };
+  }
+  if (!r.waiver_agreed) return { text: 'Not agreed', cls: 'bad', csv: 'Not agreed' };
+  const at = r.waiver_agreed_at ? ` · ${when(r.waiver_agreed_at)}` : '';
+  return { text: 'Agreed' + at, cls: 'ok', csv: 'Agreed' };
+}
+
 function showDetail(r) {
   if (!r) return;
   const a = r.answers || {};
@@ -266,11 +285,17 @@ function showDetail(r) {
       '</p>'
     : '<p class="detail-kind pub">Non-employee · paying by bank transfer</p>';
 
+  const waiver = waiverProof(r);
+
   $('detail-body').innerHTML = `
     ${kind}
     ${flags.length ? `<div class="notice warn">${flags.join('<br>')}</div>` : ''}
     <table class="detail-table"><tbody>
       ${rows}
+      <tr>
+        <th>${esc(AGREEMENT?.label || 'Waiver of Liability')}</th>
+        <td><span class="pill ${waiver.cls}">${esc(waiver.text)}</span></td>
+      </tr>
       <tr><th>Registered</th><td>${esc(when(r.created_at))}</td></tr>
     </tbody></table>`;
 
@@ -408,7 +433,10 @@ async function exportCsv() {
  * in a Filipino name or address.
  */
 function buildCsv(rows, columns) {
-  const header = ['Reference', 'Registered', 'Type', ...columns];
+  // Waiver is a fixed column on every export, not one of the question columns:
+  // it is the proof of acceptance, and it should not drop out of a file
+  // because a tab exports a narrow set of questions.
+  const header = ['Reference', 'Registered', 'Type', 'Waiver', 'Waiver accepted at', ...columns];
   const lines = [header.map(csvCell).join(',')];
 
   for (const r of rows) {
@@ -417,6 +445,8 @@ function buildCsv(rows, columns) {
       csvCell(r.reference),
       csvCell(csvDate(r.created_at)),
       csvCell(isEmployee(r) ? 'Employee' : 'Non-employee'),
+      csvCell(waiverProof(r).csv),
+      csvCell(r.waiver_agreed_at ? csvDate(r.waiver_agreed_at) : ''),
       ...columns.map((label) => csvCell(a[label] ?? '')),
     ].join(','));
   }
@@ -436,7 +466,9 @@ const csvName = (what) => `sgen-run-2026-${what}-${csvDate(Date.now()).slice(0, 
  */
 function backupColumns(rows) {
   const columns = FIELDS.map((f) => f.label);
-  const seen = new Set(columns);
+  // buildCsv already writes the waiver as a fixed column, so the copy of it
+  // in the answers blob would only repeat itself here.
+  const seen = new Set([...columns, AGREEMENT?.label || 'Waiver of Liability']);
   for (const r of rows) {
     for (const key of Object.keys(r.answers || {})) {
       if (seen.has(key)) continue;

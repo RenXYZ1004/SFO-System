@@ -1,4 +1,4 @@
-import { FORM, validate, isActive } from '../lib/form-schema.js';
+import { FORM, validate, isActive, AGREEMENT, agreedToWaiver } from '../lib/form-schema.js';
 import { appendRegistration } from '../lib/sheets.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
@@ -60,7 +60,14 @@ export default async function handler(req, res) {
     timeStyle: 'short',
     timeZone: 'Asia/Manila',
   });
+  // validate() has already refused anything without it, so this is always
+  // true here — it is read rather than assumed so the row says what arrived.
+  const agreed = agreedToWaiver(body);
+
+  // Carried as an answer as well as a column: that is what puts it in the
+  // sheet, the confirmation email and the dashboard's detail view.
   const answers = FORM.fields.map((f) => [f.label, values[f.name]]);
+  answers.push([AGREEMENT.label, agreed ? AGREEMENT.agreed : '']);
   const labelled = Object.fromEntries(answers);
 
   // --- 1. record the registration — the database decides ------------
@@ -76,7 +83,7 @@ export default async function handler(req, res) {
 
   let ref;
   try {
-    ({ reference: ref } = await saveRegistration({ values, labelled, ip }));
+    ({ reference: ref } = await saveRegistration({ values, labelled, ip, agreed }));
   } catch (err) {
     console.error('[register] database write failed:', err.message);
 

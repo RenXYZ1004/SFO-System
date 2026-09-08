@@ -1,6 +1,6 @@
 import { requireStaff } from '../lib/staff-auth.js';
 import { sql, dbConfigured } from '../lib/db.js';
-import { FORM, employeeQuestion } from '../lib/form-schema.js';
+import { FORM, employeeQuestion, AGREEMENT } from '../lib/form-schema.js';
 import { normaliseReference } from '../lib/reference.js';
 
 /**
@@ -62,7 +62,8 @@ export default async function handler(req, res) {
         matchedReference = ref;
         rows = await db`
           SELECT reference, created_at, full_name, email, proof_url,
-                 answers, sheet_synced, sheet_error, email_sent, email_error
+                 answers, waiver_agreed, waiver_agreed_at,
+                 sheet_synced, sheet_error, email_sent, email_error
             FROM registrations
            WHERE reference = ${ref}
              AND (${allTypes}::boolean
@@ -72,7 +73,8 @@ export default async function handler(req, res) {
         const like = `%${q.replace(/[%_]/g, (c) => '\\' + c)}%`;
         rows = await db`
           SELECT reference, created_at, full_name, email, proof_url,
-                 answers, sheet_synced, sheet_error, email_sent, email_error
+                 answers, waiver_agreed, waiver_agreed_at,
+                 sheet_synced, sheet_error, email_sent, email_error
             FROM registrations
            WHERE (reference ILIKE ${like}
                OR full_name ILIKE ${like}
@@ -87,7 +89,8 @@ export default async function handler(req, res) {
     } else {
       rows = await db`
         SELECT reference, created_at, full_name, email, proof_url,
-               answers, sheet_synced, sheet_error, email_sent, email_error
+               answers, waiver_agreed, waiver_agreed_at,
+               sheet_synced, sheet_error, email_sent, email_error
           FROM registrations
          WHERE (${allTypes}::boolean
                 OR COALESCE(answers ->> ${empLabel} = ${empValue}, FALSE) = ${wantEmployee}::boolean)
@@ -136,7 +139,10 @@ export default async function handler(req, res) {
       type,
       employee,
       segments,
+      // The waiver is not a question in the form, but the detail view lists
+      // it with the answers, so it travels with them.
       fields: FORM.fields.map((f) => ({ label: f.label, type: f.type })),
+      agreement: AGREEMENT,
       breakdown,
       rows,
     });
