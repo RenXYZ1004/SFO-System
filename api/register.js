@@ -1,4 +1,4 @@
-import { FORM, validate, isActive, AGREEMENT, agreedToWaiver } from '../lib/form-schema.js';
+import { FORM, validate, isActive, AGREEMENT, waiverState } from '../lib/form-schema.js';
 import { appendRegistration } from '../lib/sheets.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
@@ -60,14 +60,16 @@ export default async function handler(req, res) {
     timeStyle: 'short',
     timeZone: 'Asia/Manila',
   });
-  // validate() has already refused anything without it, so this is always
-  // true here — it is read rather than assumed so the row says what arrived.
-  const agreed = agreedToWaiver(body);
+  // true, or null when the page that submitted predates the waiver box.
+  // validate() has already turned away an outright refusal.
+  const agreed = waiverState(body);
 
   // Carried as an answer as well as a column: that is what puts it in the
-  // sheet, the confirmation email and the dashboard's detail view.
+  // sheet, the confirmation email and the dashboard's detail view. Left blank
+  // when nothing was stated, so the row never claims an acceptance it did not
+  // receive.
   const answers = FORM.fields.map((f) => [f.label, values[f.name]]);
-  answers.push([AGREEMENT.label, agreed ? AGREEMENT.agreed : '']);
+  answers.push([AGREEMENT.label, agreed === true ? AGREEMENT.agreed : '']);
   const labelled = Object.fromEntries(answers);
 
   // --- 1. record the registration — the database decides ------------
