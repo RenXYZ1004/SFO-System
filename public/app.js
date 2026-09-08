@@ -11,6 +11,12 @@ const cssEsc = (s) =>
 
 let SCHEMA = null;
 
+// Set once the questions cannot be fetched: "Proceed" is then out of service
+// for good, and the waiver gate below stops driving it.
+let proceedBlocked = false;
+
+const agreed = () => Boolean($('agree')?.checked);
+
 init();
 
 async function init() {
@@ -22,6 +28,8 @@ async function init() {
   wireShots($('race'));
   wireViews();
   wireCauses();
+  wireWhy();
+  wireAgreement();
 
   try {
     const res = await fetch('/api/schema');
@@ -67,9 +75,18 @@ function showView(name, { silent = false } = {}) {
   const form = $('view-form');
   if (!intro || !form) return;
 
-  const toForm = name === 'form';
+  // The waiver gate holds for every way into the form — the button, a
+  // #register deep link and the back button — not just the button click.
+  // Turning someone back lands them on the box instead of the top of the
+  // page, so the scroll and the focus below are left to nudgeAgreement().
+  let toForm = name === 'form';
+  const turnedBack = toForm && !agreed();
+  if (turnedBack) { toForm = false; name = 'intro'; }
+
   intro.hidden = toForm;
   form.hidden = !toForm;
+
+  if (turnedBack) return nudgeAgreement();
 
   if (!silent) {
     const hash = toForm ? '#register' : '#';
@@ -103,19 +120,17 @@ function wireShots(root) {
  * Native <dialog> gives us the focus trap, Escape handling and focus restore
  * for free, so this only has to cover opening and the backdrop click.
  */
-function wireCauses() {
-  const modal = $('causes-modal');
-  const open = $('causes-open');
-  if (!modal || !open) return;
-
-  wireShots(modal);
+function wireModal(modalId, openId, closeId) {
+  const modal = $(modalId);
+  const open = $(openId);
+  if (!modal || !open) return null;
 
   open.addEventListener('click', () => {
     if (typeof modal.showModal === 'function') modal.showModal();
     else modal.setAttribute('open', '');   // very old browsers: inline fallback
   });
 
-  $('causes-close')?.addEventListener('click', () => modal.close());
+  $(closeId)?.addEventListener('click', () => modal.close());
 
   // Clicking the backdrop closes; clicking the panel must not.
   modal.addEventListener('click', (e) => {
@@ -126,6 +141,63 @@ function wireCauses() {
       e.clientY >= r.top && e.clientY <= r.bottom;
     if (!inside) modal.close();
   });
+
+  return modal;
+}
+
+function wireCauses() {
+  const modal = wireModal('causes-modal', 'causes-open', 'causes-close');
+  wireShots(modal);
+}
+
+/* ---------- "why do we run?" modal ---------- */
+
+function wireWhy() {
+  wireModal('why-modal', 'why-open', 'why-close');
+}
+
+/* ---------- the waiver agreement ---------- */
+
+/**
+ * Nobody reaches the registration form until the Waiver of Liability has been
+ * accepted on the intro page. schemaUnavailable() takes "Proceed" out of
+ * service for good, so the gate stands aside once that has happened rather
+ * than reviving a button that has nothing to open.
+ */
+function wireAgreement() {
+  const box = $('agree');
+  if (!box) return;
+  box.addEventListener('change', () => {
+    $('agree-box')?.classList.remove('nudge');
+    syncProceed();
+  });
+  syncProceed();
+}
+
+function syncProceed() {
+  const proceed = $('proceed');
+  if (!proceed || proceedBlocked) return;
+
+  const ok = agreed();
+  proceed.disabled = !ok;
+
+  const fine = $('proceed-fine');
+  if (fine) {
+    fine.textContent = ok
+      ? 'Takes about 3 minutes. Have your proof of payment ready.'
+      : 'Tick the box above to continue.';
+  }
+}
+
+/** Point at the box someone has just been turned back for. */
+function nudgeAgreement() {
+  const box = $('agree-box');
+  if (!box) return;
+  box.classList.remove('nudge');
+  void box.offsetWidth;                    // restart the animation
+  box.classList.add('nudge');
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('agree')?.focus({ preventScroll: true });
 }
 
 /* ---------- SISC salary deduction panel ---------- */
@@ -890,6 +962,8 @@ function wireUpload(f) {
  * still worth reading: the date, the venue, the causes, the categories.
  */
 function schemaUnavailable() {
+  proceedBlocked = true;
+
   const msg =
     '<strong>The registration form could not be loaded.</strong> ' +
     'Please refresh the page. If it keeps happening, email us at the address below.';
@@ -903,7 +977,7 @@ function schemaUnavailable() {
     proceed.disabled = true;
     proceed.querySelector('span').textContent = 'Registration unavailable';
   }
-  const fine = document.querySelector('.fineprint');
+  const fine = $('proceed-fine');
   if (fine) fine.textContent = 'Please refresh the page to try again.';
 }
 

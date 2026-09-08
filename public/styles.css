@@ -252,10 +252,11 @@ body{
 #intro-notice:not([hidden]){margin-top:-26px;position:relative;z-index:2}
 #intro-notice:not([hidden]) + .welcome{margin-top:0}
 
-/* ---------- "where does it go?" button ---------- */
+/* ---------- intro buttons ("where does it go?" / "why do we run?") ---------- */
+.cause-btns{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 0}
 .cause-btn{
   display:inline-flex;align-items:center;gap:9px;
-  margin:16px 0 0;padding:11px 16px;
+  padding:11px 16px;
   background:var(--card);color:var(--accent);
   border:1.5px solid var(--accent-ring);border-radius:99px;
   font:600 14px var(--font);cursor:pointer;
@@ -351,6 +352,15 @@ body{
   display:grid;place-items:center;aspect-ratio:4/3;
   font-size:12px;font-weight:600;color:var(--muted);text-align:center;padding:8px;
 }
+/* One label under the three photos, instead of a caption on each. */
+.shots-plain .shot figcaption{display:none}
+.shots-label{
+  margin:10px 0 0;font-size:12.5px;line-height:1.55;color:var(--muted);
+}
+.why-placeholder{
+  margin:0 0 12px;color:var(--ink-2);font-size:14.5px;line-height:1.65;
+}
+.why-placeholder:last-of-type{margin-bottom:0}
 .modal-foot{
   margin:20px 0 0;padding-top:16px;border-top:1px solid var(--line);
   font-size:13px;color:var(--muted);text-align:center;
@@ -624,10 +634,9 @@ a:hover{text-decoration:underline}
 }
 
 /* ============================================================
-   Waiver / Health Declaration documents
+   Waiver of Liability + the agreement that gates "Proceed"
    ============================================================ */
-.doc-links{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px}
-@media (max-width:520px){.doc-links{grid-template-columns:1fr}}
+.doc-links{display:grid;grid-template-columns:1fr;gap:10px;margin:0 0 14px}
 .doc-link{
   display:flex;align-items:center;gap:11px;
   padding:12px 14px;border:1px solid var(--line-2);border-radius:11px;
@@ -647,6 +656,43 @@ a:hover{text-decoration:underline}
 .doc-text{display:flex;flex-direction:column;min-width:0}
 .doc-name{font-size:14.5px;font-weight:650;color:var(--ink);letter-spacing:-.01em}
 .doc-sub{font-size:12px;color:var(--muted);font-weight:400}
+
+/* The waiver agreement. The native box is hidden behind .agree-mark rather
+   than removed, so it keeps its keyboard behaviour and its focus ring. */
+.agree{
+  position:relative;display:flex;align-items:flex-start;gap:11px;
+  padding:13px 15px;margin:0 0 16px;cursor:pointer;
+  border:1.5px solid var(--line-2);border-radius:11px;background:var(--card);
+  transition:border-color .15s,background .15s,box-shadow .15s;
+}
+.agree:hover{border-color:var(--accent);background:var(--accent-soft)}
+.agree input{position:absolute;opacity:0;width:0;height:0}
+.agree-mark{
+  flex:0 0 auto;width:20px;height:20px;margin-top:1px;border-radius:6px;
+  display:grid;place-items:center;
+  border:1.5px solid var(--line-2);background:var(--card);color:transparent;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.agree input:checked + .agree-mark{
+  background:var(--accent);border-color:var(--accent);color:var(--accent-ink);
+}
+.agree input:focus-visible + .agree-mark{
+  outline:none;box-shadow:0 0 0 3px var(--accent-ring);
+}
+.agree-text{font-size:14px;line-height:1.55;color:var(--ink-2)}
+.agree-text strong{color:var(--ink);font-weight:650}
+.agree:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+
+/* Someone reached the form without ticking the box: say where to look. */
+.agree.nudge{
+  border-color:var(--err);background:var(--err-bg);
+  animation:agreeNudge .4s ease-in-out;
+}
+@keyframes agreeNudge{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-5px)}
+  75%{transform:translateX(5px)}
+}
 
 /* ============================================================
    Payment details (top of the Payment section)
@@ -790,6 +836,7 @@ a:hover{text-decoration:underline}
 
 @media (prefers-reduced-motion:reduce){
   .doc-link:hover{transform:none}
+  .agree.nudge{animation:none}
 }
 
 /* ============================================================

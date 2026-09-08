@@ -91,22 +91,41 @@
         and the <strong>Bindoy Community</strong> in Dumaguete, helping learners with special needs.
       </p>
 
-      <button type="button" class="cause-btn" id="causes-open"
-              aria-haspopup="dialog" aria-controls="causes-modal">
-        <span class="cause-btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20.8 5.6a5.1 5.1 0 0 0-7.2 0L12 7.2l-1.6-1.6a5.1 5.1 0 0 0-7.2 7.2l8.8 8.8 8.8-8.8a5.1 5.1 0 0 0 0-7.2Z"/>
-          </svg>
-        </span>
-        <span>Where does Run For A Cause go?</span>
-        <span class="cause-btn-chev" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
-               stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h13M12.5 6l6 6-6 6"/>
-          </svg>
-        </span>
-      </button>
+      <div class="cause-btns">
+        <button type="button" class="cause-btn" id="causes-open"
+                aria-haspopup="dialog" aria-controls="causes-modal">
+          <span class="cause-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.8 5.6a5.1 5.1 0 0 0-7.2 0L12 7.2l-1.6-1.6a5.1 5.1 0 0 0-7.2 7.2l8.8 8.8 8.8-8.8a5.1 5.1 0 0 0 0-7.2Z"/>
+            </svg>
+          </span>
+          <span>Where does Run For A Cause go?</span>
+          <span class="cause-btn-chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                 stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h13M12.5 6l6 6-6 6"/>
+            </svg>
+          </span>
+        </button>
+
+        <button type="button" class="cause-btn" id="why-open"
+                aria-haspopup="dialog" aria-controls="why-modal">
+          <span class="cause-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2.5 12.5h4L9 5.5l4 13 2.5-6h4"/>
+            </svg>
+          </span>
+          <span>Why do we run?</span>
+          <span class="cause-btn-chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                 stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h13M12.5 6l6 6-6 6"/>
+            </svg>
+          </span>
+        </button>
+      </div>
     </section>
 
     <!-- ---------- where the proceeds go ---------- -->
@@ -131,20 +150,20 @@
             Pawikan Conservation Center
             <span class="cause-place">Bataan</span>
           </h3>
-          <div class="shots">
+          <div class="shots shots-plain">
             <figure class="shot" style="--i:0">
               <img src="/causes/pawikan-1.png" alt="Pawikan Conservation Center, Bataan" loading="lazy">
-              <figcaption>Pawikan Conservation Center</figcaption>
             </figure>
             <figure class="shot" style="--i:1">
               <img src="/causes/pawikan-2.png" alt="Pawikan Conservation Center, Bataan" loading="lazy">
-              <figcaption>Pawikan Conservation Center</figcaption>
             </figure>
             <figure class="shot" style="--i:2">
               <img src="/causes/pawikan-3.png" alt="Pawikan Conservation Center, Bataan" loading="lazy">
-              <figcaption>Pawikan Conservation Center</figcaption>
             </figure>
           </div>
+          <p class="shots-label">
+            Caption placeholder — one line about the Pawikan photos goes here.
+          </p>
         </section>
 
         <section class="cause-group">
@@ -152,24 +171,55 @@
             Bindoy Community
             <span class="cause-place">Dumaguete</span>
           </h3>
-          <div class="shots">
+          <div class="shots shots-plain">
             <figure class="shot" style="--i:3">
               <img src="/causes/bindoy-1.png" alt="Bindoy Community, Dumaguete" loading="lazy">
-              <figcaption>Bindoy Community</figcaption>
             </figure>
             <figure class="shot" style="--i:4">
               <img src="/causes/bindoy-2.png" alt="Bindoy Community, Dumaguete" loading="lazy">
-              <figcaption>Bindoy Community</figcaption>
             </figure>
             <figure class="shot" style="--i:5">
               <img src="/causes/bindoy-3.png" alt="Bindoy Community, Dumaguete" loading="lazy">
-              <figcaption>Bindoy Community</figcaption>
             </figure>
           </div>
+          <p class="shots-label">
+            Caption placeholder — one line about the Bindoy photos goes here.
+          </p>
         </section>
 
         <p class="modal-foot">
           Proceeds help learners with special needs in both communities.
+        </p>
+      </div>
+    </dialog>
+
+    <!-- ---------- why do we run ----------
+         Placeholder: the copy below is a stand-in until the write-up lands. -->
+    <dialog id="why-modal" class="modal" aria-labelledby="why-title">
+      <div class="modal-head">
+        <div>
+          <h2 id="why-title">Why do we run?</h2>
+          <p class="modal-sub">Placeholder — the write-up goes here.</p>
+        </div>
+        <button type="button" class="modal-close" id="why-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p class="why-placeholder">
+          Placeholder — replace this with the reason behind the run: what the
+          community is running for, and what a finished lap actually changes.
+        </p>
+        <p class="why-placeholder">
+          Placeholder — a second paragraph, if the story needs one.
+        </p>
+
+        <p class="modal-foot">
+          Placeholder — closing line goes here.
         </p>
       </div>
     </dialog>
@@ -238,9 +288,8 @@
           <li>Settle your registration fee by <strong>bank transfer</strong>, or
               — for SISC employees — through <strong>salary deduction</strong>.</li>
           <li>Upload your proof of payment before submitting.</li>
-          <li>Read and agree to the <strong>Waiver of Liability</strong> and
-              <strong>Health Declaration</strong> before final submission.
-              Both open as PDFs:</li>
+          <li>Read and agree to the <strong>Waiver of Liability</strong>
+              before you continue. It opens as a PDF:</li>
         </ol>
 
         <div class="doc-links">
@@ -258,22 +307,23 @@
               <span class="doc-sub">PDF · opens in a new tab</span>
             </span>
           </a>
-
-          <a class="doc-link" href="/docs/health-declaration.pdf"
-             target="_blank" rel="noopener">
-            <span class="doc-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-                   stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2.5H7.5A2.5 2.5 0 0 0 5 5v14a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 19 19V7.5Z"/>
-                <path d="M14 2.5V7a.5.5 0 0 0 .5.5H19M12 11.5v5M9.5 14h5"/>
-              </svg>
-            </span>
-            <span class="doc-text">
-              <span class="doc-name">Health Declaration</span>
-              <span class="doc-sub">PDF · opens in a new tab</span>
-            </span>
-          </a>
         </div>
+
+        <!-- The gate for "Proceed": app.js keeps the button out of service
+             until this is ticked. -->
+        <label class="agree" id="agree-box">
+          <input type="checkbox" id="agree">
+          <span class="agree-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                 stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12.5l4.5 4.5L19 7"/>
+            </svg>
+          </span>
+          <span class="agree-text">
+            I have read and <strong>accept the Waiver of Liability</strong>, and I agree
+            to its terms for the Southville Run For A Cause 2026.
+          </span>
+        </label>
 
         <div class="notice info">
           <strong>Note:</strong> Each registration is for <strong>one (1) participant only</strong>.
@@ -292,7 +342,7 @@
 
     <!-- proceed -->
     <div class="proceed-card">
-      <button type="button" class="btn" id="proceed">
+      <button type="button" class="btn" id="proceed" disabled>
         <span>Proceed to the registration</span>
         <span class="btn-arrow" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
@@ -301,7 +351,7 @@
           </svg>
         </span>
       </button>
-      <p class="fineprint">Takes about 3 minutes. Have your proof of payment ready.</p>
+      <p class="fineprint" id="proceed-fine">Tick the box above to continue.</p>
     </div>
 
   </main>
