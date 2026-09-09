@@ -5,6 +5,10 @@ import {
 } from '../lib/staff-auth.js';
 
 export default function handler(req, res) {
+  // Sign-in state, and a Set-Cookie on the way out: nothing here may be held
+  // by a CDN or a shared cache. The other staff routes say so themselves.
+  res.setHeader('Cache-Control', 'no-store, private');
+
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
 
   // GET = "am I already signed in?", so the page can skip the login form.

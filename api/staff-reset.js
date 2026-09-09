@@ -20,6 +20,10 @@ import { sql, dbConfigured } from '../lib/db.js';
 const CONFIRM = 'I Accept';
 
 export default async function handler(req, res) {
+  // Set before the guard: the 401 that turns a stranger away is a response
+  // like any other, and must not sit in a shared cache either.
+  res.setHeader('Cache-Control', 'no-store, private');
+
   if (!requireStaff(req, res)) return;
 
   if (req.method !== 'POST') {
@@ -29,8 +33,6 @@ export default async function handler(req, res) {
   if (!dbConfigured()) {
     return res.status(503).json({ ok: false, error: 'No database configured.' });
   }
-
-  res.setHeader('Cache-Control', 'no-store, private');
 
   const body = typeof req.body === 'string' ? safeJson(req.body) : req.body || {};
   if (String(body.confirm ?? '').trim() !== CONFIRM) {

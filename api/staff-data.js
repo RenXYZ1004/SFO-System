@@ -20,6 +20,10 @@ import { normaliseReference } from '../lib/reference.js';
 const MAX_LIMIT = 200;
 
 export default async function handler(req, res) {
+  // Set before the guard: the 401 that turns a stranger away is a response
+  // like any other, and must not sit in a shared cache either.
+  res.setHeader('Cache-Control', 'no-store, private');
+
   if (!requireStaff(req, res)) return;
 
   if (req.method !== 'GET') {
@@ -31,7 +35,6 @@ export default async function handler(req, res) {
   }
 
   // Never let a dashboard page be cached by a shared proxy.
-  res.setHeader('Cache-Control', 'no-store, private');
 
   const q = String(req.query?.q ?? '').trim();
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(req.query?.limit) || 50));

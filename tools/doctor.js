@@ -129,6 +129,45 @@ if (!needsBlob) {
   }
 }
 
+/* ---------- 5. what the web root gives away ---------- */
+
+/**
+ * public/ is served verbatim to anyone who asks, so everything in it is
+ * published whether or not a page links to it. Maintainer notes dropped in
+ * beside the files they describe are the easy way to leak internal paths,
+ * open questions and half-finished artwork — this catches that before a
+ * deploy does. Working files and notes belong in assets-src/.
+ *
+ * Checked here rather than in a routing rule on purpose: a rule only holds on
+ * the host that has it, and only until someone edits it.
+ */
+{
+  const { readdirSync, statSync } = await import('node:fs');
+  const webRoot = path.join(root, 'public');
+
+  // What the two pages actually fetch, by extension. Anything else in the
+  // web root is either a mistake or wants adding here deliberately.
+  const SERVED = new Set(['.html', '.css', '.js', '.png', '.svg', '.jpg', '.jpeg', '.webp', '.pdf', '.ico']);
+  const BY_NAME = new Set(['robots.txt']);
+
+  const walk = (dir) => readdirSync(dir).flatMap((name) => {
+    const full = path.join(dir, name);
+    return statSync(full).isDirectory() ? walk(full) : [full];
+  });
+
+  const strays = walk(webRoot)
+    .map((f) => path.relative(webRoot, f).replace(/\\/g, '/'))
+    .filter((rel) => !BY_NAME.has(rel) && !SERVED.has(path.extname(rel).toLowerCase()));
+
+  if (strays.length) {
+    add('Web root', WARN, `${strays.length} file${strays.length > 1 ? 's' : ''} in public/ nothing serves: ${strays.join(', ')}`,
+      'public/ is published as-is. Move notes and working files to assets-src/,\n' +
+      '     which .vercelignore keeps out of the deployment.');
+  } else {
+    add('Web root', OK, 'public/ holds only files the site actually serves');
+  }
+}
+
 /* ---------- report ---------- */
 
 const pad = (s, n) => String(s).padEnd(n);

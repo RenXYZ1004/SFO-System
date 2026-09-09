@@ -3,6 +3,13 @@ import { dbConfigured } from '../lib/db.js';
 
 /** Feeds the front-end so the page renders straight from the schema. */
 export default function handler(req, res) {
+  // Read-only, like the data it returns. Every other route states its verb;
+  // this one used to answer any of them.
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.setHeader('Allow', 'GET, HEAD');
+    return res.status(405).json({ ok: false, error: 'GET only' });
+  }
+
   // The schema only changes on a deploy, so let the CDN serve it: the page
   // cannot render its questions until this returns, and a cold serverless
   // start on that path is the slowest thing a first visitor waits for.

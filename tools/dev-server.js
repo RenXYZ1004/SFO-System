@@ -33,6 +33,51 @@ const MIME = {
   '.woff2': 'font/woff2', '.pdf': 'application/pdf',
 };
 
+/**
+ * The response headers vercel.json sends in production, applied here too.
+ *
+ * Without this, the strictest thing about the deployed site — its
+ * Content-Security-Policy — is the one thing local development never
+ * exercises, so a violation could only ever be found after a deploy.
+ */
+const WILDCARD = '\u0000';
+
+/**
+ * Vercel's `source` is path-to-regexp. This config uses two shapes: a `(.*)`
+ * tail, and an alternation like `(styles.css|app.js)`. So park the wildcards,
+ * escape the dots that are meant literally, and put the wildcards back —
+ * leaving the alternation groups to work as the regex groups they already are.
+ */
+function sourceToRegExp(source) {
+  const body = source
+    .split('(.*)').join(WILDCARD)
+    .replace(/\./g, '\\.')
+    .split(WILDCARD).join('.*');
+  return new RegExp(`^${body}$`);
+}
+
+const HEADER_RULES = (() => {
+  try {
+    const cfg = JSON.parse(readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+    return (cfg.headers || []).map((rule) => ({
+      test: sourceToRegExp(rule.source),
+      headers: rule.headers || [],
+    }));
+  } catch (err) {
+    console.warn('dev-server: could not read the headers from vercel.json -', err.message);
+    return [];
+  }
+})();
+
+/** Every matching rule applies, later ones winning, exactly as on Vercel. */
+function applyConfiguredHeaders(res, pathname) {
+  for (const rule of HEADER_RULES) {
+    if (rule.test.test(pathname)) {
+      for (const h of rule.headers) res.setHeader(h.key, h.value);
+    }
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   let pathname = decodeURIComponent(url.pathname);
@@ -45,6 +90,8 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: false, error: 'No such endpoint' }));
     }
+
+    applyConfiguredHeaders(res, pathname);
 
     const body = await readBody(req);
     const shim = {
@@ -93,7 +140,11 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(404).end('Not found');
     return;
   }
-  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
+  // Matched against the URL as Vercel sees it: cleanUrls means the rule for
+  // /staff has to fire for what is on disk as staff.html, and / for index.html.
+  applyConfiguredHeaders(res, pathname === '/index.html' ? '/' : pathname.replace(/\.html$/, ''));
+  res.setHeader('Content-Type', MIME[path.extname(file)] || 'application/octet-stream');
+  res.writeHead(200);
   res.end(await readFile(file));
 });
 

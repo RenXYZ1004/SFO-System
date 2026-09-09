@@ -1,0 +1,32 @@
+# What never leaves this machine.
+#
+# IMPORTANT: once this file exists, the Vercel CLI uses it INSTEAD of
+# .gitignore when deciding what to upload. Everything secret therefore has to
+# be named here as well, even though .gitignore already covers it — dropping a
+# line from this file is enough to start shipping it.
+
+# --- secrets -----------------------------------------------------------
+.env
+.env.*
+*.pem
+*.key
+token-run.log
+*.log
+
+# --- never needed at runtime -------------------------------------------
+# The functions in api/ import from lib/ only; nothing imports tools/, and
+# there is no build step to run them. assets-src/ is working files and the
+# maintainer notes that used to sit in the web root.
+tools/
+assets-src/
+reference_shirt.png
+
+node_modules
+.git
+.github
+.vercel
+
+# --- repo furniture ----------------------------------------------------
+README.md
+.gitignore
+.vercelignore

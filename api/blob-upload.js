@@ -77,10 +77,45 @@ const safeName = (s) =>
     .replace(/_{2,}/g, '_')
     .slice(-60) || 'receipt';
 
+/**
+ * This is the one route that takes a write from a stranger — registration is
+ * open to the public, so it cannot sit behind a sign-in. The file itself is
+ * already checked hard (size, declared type, and the bytes actually matching
+ * that type); this only limits how often one address may do it, so a script
+ * cannot fill the Blob store and the bill with 4 MB of valid JPEG.
+ *
+ * Per warm instance, like the staff login throttle: serverless gives every
+ * instance its own memory, so this slows a naive flood rather than stopping a
+ * distributed one. If uploads ever need a real limit, it belongs in front of
+ * the function — a WAF rule or Vercel's own rate limiting — not here.
+ */
+const UPLOADS_PER_HOUR = 12;
+const uploads = new Map();
+
+function uploadThrottled(ip) {
+  const now = Date.now();
+  const recent = (uploads.get(ip) || []).filter((t) => now - t < 60 * 60_000);
+  recent.push(now);
+  uploads.set(ip, recent);
+  // A warm instance should not grow a map forever on a busy day.
+  if (uploads.size > 500) uploads.clear();
+  return recent.length > UPLOADS_PER_HOUR;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'POST only' });
+  }
+
+  res.setHeader('Cache-Control', 'no-store');
+
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  if (uploadThrottled(ip)) {
+    return res.status(429).json({
+      ok: false,
+      error: 'Too many uploads from this connection. Please wait a while and try again.',
+    });
   }
 
   if (!blobConfigured()) {

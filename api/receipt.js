@@ -18,6 +18,10 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'GET only' });
   }
+  // Set before the guard: the 401 that turns a stranger away is a response
+  // like any other, and must not sit in a shared cache either.
+  res.setHeader('Cache-Control', 'no-store, private');
+
   if (!requireStaff(req, res)) return;
 
   if (!blobConfigured()) {
@@ -37,7 +41,6 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', type);
     // Shown in the browser, never cached by a shared proxy.
     res.setHeader('Content-Disposition', 'inline');
-    res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
     const buf = Buffer.from(await new Response(found.stream).arrayBuffer());

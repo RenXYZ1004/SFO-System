@@ -17,9 +17,11 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'GET only' });
   }
-  if (!requireStaff(req, res)) return;
-
+  // Set before the guard: the 401 that turns a stranger away is a response
+  // like any other, and must not sit in a shared cache either.
   res.setHeader('Cache-Control', 'no-store, private');
+
+  if (!requireStaff(req, res)) return;
 
   const present = (k) => Boolean(process.env[k]);
   const env = {
