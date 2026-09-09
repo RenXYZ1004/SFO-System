@@ -863,6 +863,172 @@ a:hover{text-decoration:underline}
 }
 
 /* ============================================================
+   Race jersey, in 3D (inside the race-category question, and the pop-up)
+
+   Two flat views hung back to back, with the gap between them packed with
+   darkened copies of the front silhouette so the shirt has an edge to show
+   when it turns. app.js owns the angles; everything here is the box they
+   turn inside.
+   ============================================================ */
+
+.jersey-card{
+  margin:14px 0 2px;padding:13px;
+  border:1px solid var(--line);border-radius:12px;background:var(--bg);
+}
+.jersey-card-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+}
+.jersey-eyebrow{
+  margin:0;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);
+}
+.jersey-name{
+  margin:3px 0 0;font-size:15px;font-weight:800;letter-spacing:-.01em;color:var(--ink);
+}
+/* The colourway rides along with the distance rather than under it: two short
+   words on one line read as a name, two stacked lines read as a form. */
+.jersey-colour{font-weight:600;color:var(--ink-2)}
+.jersey-colour::before{content:"· "}
+.jersey-open{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;
+  font-weight:700;
+}
+.jersey-hint{
+  margin:9px 0 0;font-size:12.5px;line-height:1.55;color:var(--muted);text-align:center;
+}
+
+/* ---------- the viewer ---------- */
+
+.jersey{
+  --depth:13px;      /* how thick the garment is, front face to back face */
+  --j-turn:1;        /* 1 face-on, 0 edge-on — app.js keeps this current */
+  --j-tint:140,140,160;
+  position:relative;display:grid;place-items:center;
+  margin:11px 0 0;border-radius:10px;
+  perspective:900px;perspective-origin:50% 44%;
+  background:radial-gradient(72% 58% at 50% 46%, rgba(var(--j-tint),.20), transparent 72%);
+  transition:background .4s;
+}
+.jersey-mini{height:196px}
+.jersey-big{--depth:20px;height:clamp(200px,40vh,340px);perspective:1150px}
+
+.j-stage{
+  position:relative;display:grid;place-items:center;
+  width:100%;height:100%;
+  transform-style:preserve-3d;
+  transition:transform .45s cubic-bezier(.2,.85,.3,1);
+  /* Horizontal drags turn the shirt; vertical ones still scroll the page,
+     which matters more on a phone than a tilt does. */
+  touch-action:pan-y;
+  cursor:grab;outline-offset:6px;
+}
+.j-stage:focus-visible{outline:2px solid var(--accent)}
+.jersey.is-turning .j-stage{cursor:grabbing;transition:none}
+
+.j-spin{
+  position:relative;height:100%;aspect-ratio:3/4;
+  transform-style:preserve-3d;
+  transition:transform .55s cubic-bezier(.2,.85,.3,1);
+  will-change:transform;
+}
+/* While a finger is on it, and while app.js is placing it, the shirt tracks
+   exactly rather than easing towards where it was asked to be. */
+.jersey.is-turning .j-spin,.jersey.is-still .j-spin,
+.jersey.is-turning .j-floor,.jersey.is-still .j-floor{transition:none}
+
+.j-face,.j-edge{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;
+  user-select:none;-webkit-user-drag:none;pointer-events:none;
+}
+.j-face{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.j-front{transform:translateZ(calc(var(--depth) / 2))}
+.j-back{transform:rotateY(180deg) translateZ(calc(var(--depth) / 2))}
+
+.j-edges{position:absolute;inset:0;transform-style:preserve-3d}
+/* --z runs 0→1 through the stack, so the copies span the full depth. Their
+   brightness is baked into the style attribute by app.js. */
+.j-edge{transform:translateZ(calc(var(--depth) * (0.5 - var(--z))))}
+
+/* Contact shadow. It narrows as the shirt turns edge-on, which is most of
+   what persuades the eye there is an object here at all. */
+.j-floor{
+  position:absolute;left:50%;bottom:2px;width:56%;height:15px;
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(16,16,20,.32),rgba(16,16,20,0) 76%);
+  transform:translateX(-50%) scaleX(calc(.55 + .45 * var(--j-turn)));
+  transition:transform .55s cubic-bezier(.2,.85,.3,1);
+}
+
+/* Nothing picked yet: a quiet outline of what is coming, on a plain card. The
+   hint under the card does the asking, so the slot itself stays silent. */
+.j-ghost{display:none;width:auto;height:58%;color:var(--line-2);opacity:.75}
+.jersey.is-empty{
+  height:136px;background:var(--card);border:1px dashed var(--line-2);
+}
+.jersey.is-empty .j-ghost{display:block}
+
+/* Artwork that was asked for and did not arrive is a different matter, and
+   says so exactly as an empty photo tile does. */
+.j-note{
+  margin:0;padding:0 16px;text-align:center;
+  font-size:12.5px;font-weight:600;color:var(--muted);
+}
+.jersey.is-missing{
+  height:136px;
+  background:
+    repeating-linear-gradient(45deg,transparent,transparent 9px,var(--accent-soft) 9px,var(--accent-soft) 18px),
+    var(--card);
+  border:1px dashed var(--line-2);
+}
+.jersey.is-empty .j-stage,.jersey.is-missing .j-stage,
+.jersey.is-empty .j-floor,.jersey.is-missing .j-floor{display:none}
+.jersey:not(.is-missing) .j-note{display:none}
+
+/* ---------- the pop-up ---------- */
+
+.jersey-modal{width:min(560px,calc(100vw - 28px))}
+.jersey-modal-body{text-align:center}
+.jersey-tools{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  flex-wrap:wrap;margin-top:16px;
+}
+.jersey-faces{
+  display:inline-flex;gap:3px;padding:3px;
+  border:1px solid var(--line);border-radius:99px;background:var(--bg);
+}
+.jersey-facebtn{
+  appearance:none;border:0;background:transparent;cursor:pointer;
+  padding:6px 17px;border-radius:99px;
+  font:700 13px var(--font);color:var(--ink-2);
+  transition:background .18s,color .18s;
+}
+.jersey-facebtn:hover{color:var(--accent)}
+.jersey-facebtn.is-on{background:var(--accent);color:var(--accent-ink)}
+.jersey-facebtn:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-ring)}
+.jersey-drag{
+  flex:1 1 100%;margin:2px 0 0;
+  font-size:12.5px;color:var(--muted);
+}
+.jersey-drag span{margin-right:5px;font-size:14px}
+
+/* Under the size chart: the way back to the shirt this size is measured for. */
+.size-jersey{display:inline-flex;align-items:center;gap:6px;margin:11px auto 0;font-weight:700}
+.size-guide{text-align:center}
+.size-guide .size-guide-note{text-align:center}
+
+@media (prefers-color-scheme:dark){
+  .j-floor{background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0) 76%)}
+}
+
+/* The turn is the whole point, so it is never removed outright — only taken
+   down to something that does not swing across the screen. */
+@media (prefers-reduced-motion:reduce){
+  .j-stage,.j-spin,.j-floor{transition-duration:.001s}
+  .jersey{transition:none}
+}
+
+/* ============================================================
    Shirt size guide (inside the shirt-size question)
    ============================================================ */
 .size-guide{

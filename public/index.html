@@ -399,6 +399,32 @@ We run because every step can make a difference.
 
     <p class="lede-form" id="desc"></p>
 
+    <!-- Cloned into the race-category question by app.js. Every distance runs
+         in its own colourway, so the jersey belongs beside the question that
+         decides it. The viewer itself is built by app.js. -->
+    <template id="tpl-jersey">
+      <div class="jersey-card" id="jersey-card">
+        <div class="jersey-card-head">
+          <div class="jersey-title">
+            <p class="jersey-eyebrow">Your race jersey</p>
+            <p class="jersey-name" id="jersey-name">Choose a distance</p>
+          </div>
+          <button type="button" class="btn-ghost jersey-open" id="jersey-open" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2.6 21 7v10l-9 4.4L3 17V7z"/>
+              <path d="M3 7l9 4.4L21 7M12 11.4V21.4"/>
+            </svg>
+            View in 3D
+          </button>
+        </div>
+        <div class="jersey jersey-mini" id="jersey-mini" data-layers="14"></div>
+        <p class="jersey-hint" id="jersey-hint">
+          Each distance has its own colourway. Pick one above to see the shirt.
+        </p>
+      </div>
+    </template>
+
     <!-- Cloned into the shirt-size question by app.js, so the measurements
          are on screen while the size is being chosen. -->
     <template id="tpl-shirt-guide">
@@ -423,6 +449,17 @@ We run because every step can make a difference.
           Race shirts are unisex. Open the chart at full size to check the
           measurements before choosing — sizes cannot be swapped on race day.
         </p>
+        <!-- Unhidden by app.js once a race category is chosen: which shirt you
+             are being measured for is decided by the distance, not by this
+             question, so the way back to it belongs here. -->
+        <button type="button" class="btn-ghost jersey-open size-jersey" id="size-jersey" hidden>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.6 21 7v10l-9 4.4L3 17V7z"/>
+            <path d="M3 7l9 4.4L21 7M12 11.4V21.4"/>
+          </svg>
+          <span>See the <span id="size-jersey-cat">race</span> jersey in 3D</span>
+        </button>
       </div>
     </template>
 
@@ -570,6 +607,46 @@ We run because every step can make a difference.
       <div id="mail-warn" class="notice warn" hidden></div>
       <p class="again"><a href="#" id="again">Register another participant</a></p>
     </section>
+
+    <!-- The jersey at full size. Deliberately outside <form>: it holds no
+         answers, and a dialog full of buttons inside a form is a submit
+         waiting to happen. app.js builds the viewer into #jersey-big. -->
+    <dialog id="jersey-modal" class="modal jersey-modal" aria-labelledby="jersey-title">
+      <div class="modal-head">
+        <div>
+          <h2 id="jersey-title">Race jersey</h2>
+          <p class="modal-sub" id="jersey-sub">Front and back</p>
+        </div>
+        <button type="button" class="modal-close" id="jersey-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body jersey-modal-body">
+        <div class="jersey jersey-big" id="jersey-big" data-layers="24"></div>
+
+        <div class="jersey-tools">
+          <div class="jersey-faces" role="group" aria-label="Jersey view">
+            <button type="button" class="jersey-facebtn is-on" data-face="front"
+                    aria-pressed="true">Front</button>
+            <button type="button" class="jersey-facebtn" data-face="back"
+                    aria-pressed="false">Back</button>
+          </div>
+          <p class="jersey-drag">
+            <span aria-hidden="true">&#8635;</span>
+            Drag the shirt to turn it — or use the arrow keys.
+          </p>
+        </div>
+
+        <p class="modal-foot">
+          Artwork is indicative; printed colours may vary slightly.
+          The size chart lives on the <strong>Shirt size</strong> question.
+        </p>
+      </div>
+    </dialog>
 
   </main>
 </div>

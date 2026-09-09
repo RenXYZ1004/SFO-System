@@ -121,19 +121,24 @@ function wireShots(root) {
   });
 }
 
+function openModal(modal) {
+  if (!modal || modal.open) return;
+  if (typeof modal.showModal === 'function') modal.showModal();
+  else modal.setAttribute('open', '');     // very old browsers: inline fallback
+}
+
 /**
  * Native <dialog> gives us the focus trap, Escape handling and focus restore
  * for free, so this only has to cover opening and the backdrop click.
+ *
+ * `openId` is optional: a dialog opened from script still wants Escape and the
+ * backdrop wired, and having no button of its own is no reason to go without.
  */
 function wireModal(modalId, openId, closeId) {
   const modal = $(modalId);
-  const open = $(openId);
-  if (!modal || !open) return null;
+  if (!modal) return null;
 
-  open.addEventListener('click', () => {
-    if (typeof modal.showModal === 'function') modal.showModal();
-    else modal.setAttribute('open', '');   // very old browsers: inline fallback
-  });
+  $(openId)?.addEventListener('click', () => openModal(modal));
 
   $(closeId)?.addEventListener('click', () => modal.close());
 
@@ -402,7 +407,10 @@ function renderSections() {
   if (sd) sd.innerHTML = panelFields(SD_PANEL).map(renderField).join('');
 
   mountPaymentInfo();
+  // Before mountJersey: the size guide carries the second way into the jersey
+  // pop-up, and mountJersey wires it.
   mountSizeGuide();
+  mountJersey();
   mountSdSummary();
 }
 
@@ -505,6 +513,339 @@ function mountSizeGuide() {
   const parent = err?.parentNode || field;
   parent.insertBefore(tpl.content.cloneNode(true), err ?? null);
   wireShots(field);
+}
+
+/* ---------- the race jersey, in 3D ---------- */
+
+/**
+ * Every distance runs in its own colourway, so the shirt is part of the answer
+ * rather than decoration: pick 5K and the green one is what turns up, front
+ * and back.
+ *
+ * The "3D" is CSS, not a mesh. The two flat views the printer supplies anyway
+ * are hung back to back, and the gap between them is packed with darkened
+ * copies of the same silhouette — so when the shirt turns, it has an edge to
+ * show. That buys a solid-looking garment out of two PNGs, with no model to
+ * commission and no library to ship.
+ */
+
+const JERSEY_DIR = '/shirt/jersey';
+
+/**
+ * Keyed by the race_category answers in lib/form-schema.js: add a distance
+ * there and it needs an entry here, or its jersey quietly stops being shown.
+ * The tint is an "r,g,b" triple because it is only ever used at low alpha, for
+ * the glow behind the shirt — it sits near the artwork rather than matching it.
+ */
+const JERSEYS = {
+  '1K':  { slug: '1k',  colourway: 'Classic white', tint: '150,152,172' },
+  '3K':  { slug: '3k',  colourway: 'Signal red',    tint: '239,59,49' },
+  '5K':  { slug: '5k',  colourway: 'Emerald green', tint: '20,145,82' },
+  '10K': { slug: '10k', colourway: 'Deep violet',   tint: '109,42,176' },
+};
+
+/** How far a drag turns the shirt, in degrees per pixel. */
+const TURN_RATE = 0.75;
+/** A pointer that travelled less than this was a tap, not a turn. */
+const TAP_SLOP = 6;
+
+const motionOff = () =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+
+/** The two viewers on the page: the card under the chips, and the pop-up. */
+const jerseyViews = { mini: null, big: null };
+/** Distances whose jersey has already introduced itself unprompted. */
+const jerseySeen = new Set();
+
+/**
+ * Builds one viewer into `root`. `onTurn` is called with 'front' or 'back'
+ * whenever the side facing the reader changes, so controls elsewhere can
+ * follow the shirt rather than the shirt having to know about them.
+ */
+function makeJersey(root, { onTurn } = {}) {
+  const layers = Math.max(2, Number(root.dataset.layers) || 10);
+
+  // The shading is computed once and baked into the markup: the copies nearest
+  // the middle of the garment are the furthest from the light, which is what
+  // makes the stack read as a rounded body rather than a deck of cards. They
+  // are wound well down — an edge seen this obliquely is mostly shadow — and
+  // saturated back up, or the pale half of a two-tone shirt extrudes as grey.
+  const edges = Array.from({ length: layers }, (_, i) => {
+    const t = (i + 1) / (layers + 1);
+    const lit = (0.6 - 0.34 * Math.sin(Math.PI * t)).toFixed(3);
+    return `<img class="j-edge" alt="" draggable="false"
+                 style="--z:${t.toFixed(4)};filter:brightness(${lit}) saturate(1.35)">`;
+  }).join('');
+
+  root.innerHTML = `
+    <span class="j-floor" aria-hidden="true"></span>
+    <div class="j-stage" tabindex="0" role="img" aria-label="Race jersey">
+      <div class="j-spin">
+        <span class="j-edges" aria-hidden="true">${edges}</span>
+        <img class="j-face j-front" alt="" draggable="false">
+        <img class="j-face j-back" alt="" draggable="false">
+      </div>
+    </div>
+    <!-- Before a distance is picked there is no shirt to show, and hatching a
+         slot this size shouts about it. An outline of the thing that is coming
+         holds the space and stays quiet. -->
+    <svg class="j-ghost" viewBox="0 0 100 110" aria-hidden="true" fill="none"
+         stroke="currentColor" stroke-width="3" stroke-linejoin="round">
+      <path d="M50 9 30 15 8 27l8 20 12-5v58h44V42l12 5 8-20-22-12z"/>
+      <path d="M38 12q12 14 24 0"/>
+    </svg>
+    <p class="j-note"></p>`;
+
+  const stage = root.querySelector('.j-stage');
+  const spin = root.querySelector('.j-spin');
+  const front = root.querySelector('.j-front');
+  const back = root.querySelector('.j-back');
+  const edgeEls = [...root.querySelectorAll('.j-edge')];
+  const note = root.querySelector('.j-note');
+
+  let cat = '';
+  let ry = 0;            // degrees turned; unbounded, so a drag can wind on
+  let showing = 'front';
+  let drag = null;
+
+  /** Which side is towards the reader at the current angle. */
+  const facing = () => {
+    const n = ((ry % 360) + 360) % 360;
+    return n > 90 && n < 270 ? 'back' : 'front';
+  };
+
+  const usable = () => cat && !root.classList.contains('is-missing');
+
+  function describe() {
+    const what = cat ? `${cat} race jersey` : 'Race jersey';
+    stage.setAttribute('aria-label',
+      `${what}, ${showing} view. Drag it, or use the arrow keys, to turn it round.`);
+  }
+
+  function apply() {
+    spin.style.transform = `rotateY(${ry.toFixed(2)}deg)`;
+    // 1 with a face towards the reader, 0 edge-on: the shadow on the floor
+    // narrows as the shirt turns away, which is most of what sells the depth.
+    root.style.setProperty('--j-turn', Math.abs(Math.cos(ry * Math.PI / 180)).toFixed(3));
+
+    const now = facing();
+    if (now !== showing) { showing = now; describe(); onTurn?.(now); }
+  }
+
+  /** `instant` places the shirt without animating — for setup, not for turns. */
+  function setTurn(deg, { instant = false } = {}) {
+    if (instant) root.classList.add('is-still');
+    ry = deg;
+    apply();
+    if (instant) requestAnimationFrame(() => root.classList.remove('is-still'));
+  }
+
+  /** Turns to a named side the short way round from wherever it is now. */
+  function face(which, opts) {
+    const deg = which === 'back' ? 180 : 0;
+    setTurn(deg + 360 * Math.round((ry - deg) / 360), opts);
+  }
+
+  /** Leans the whole stage towards a mouse crossing it. Purely a hover treat. */
+  const lean = (deg) => { stage.style.transform = `rotateX(${deg.toFixed(2)}deg)`; };
+
+  // Artwork that has not arrived yet must not leave a broken shirt on the
+  // page: the viewer steps aside and the question goes on working without it.
+  front.addEventListener('error', () => {
+    root.classList.add('is-missing');
+    note.textContent = 'Jersey artwork coming soon.';
+  });
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (!usable()) return;
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: ry, moved: 0 };
+    stage.setPointerCapture(e.pointerId);
+    root.classList.add('is-turning');
+    lean(0);
+  });
+
+  stage.addEventListener('pointermove', (e) => {
+    if (!drag) {
+      if (usable() && e.pointerType === 'mouse' && !motionOff()) {
+        const box = stage.getBoundingClientRect();
+        lean((0.5 - (e.clientY - box.top) / box.height) * 11);
+      }
+      return;
+    }
+    if (e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    drag.moved = Math.max(drag.moved, Math.abs(dx), Math.abs(e.clientY - drag.y));
+    setTurn(drag.from + dx * TURN_RATE);
+  });
+
+  const release = (e) => {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    const { moved } = drag;
+    drag = null;
+    root.classList.remove('is-turning');
+    // A tap is not a turn — it is the shortest way to ask for the other side.
+    face(moved < TAP_SLOP ? (showing === 'front' ? 'back' : 'front') : facing());
+  };
+  stage.addEventListener('pointerup', release);
+  stage.addEventListener('pointercancel', release);
+  stage.addEventListener('pointerleave', () => { if (!drag) lean(0); });
+
+  stage.addEventListener('keydown', (e) => {
+    if (!usable()) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      // Free rotation rather than a flip: a three-quarter view is worth
+      // being able to stop on, and the buttons follow whichever side wins.
+      setTurn(ry + (e.key === 'ArrowRight' ? 45 : -45));
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      face(showing === 'front' ? 'back' : 'front');
+    }
+  });
+
+  /** Points the viewer at a distance's artwork; '' empties it. */
+  function show(next) {
+    cat = JERSEYS[next] ? next : '';
+    const j = JERSEYS[cat];
+    root.classList.toggle('is-empty', !j);
+    root.classList.remove('is-missing');
+    // Nothing to say while empty: the ghost holds the slot and the hint under
+    // the card already asks for a distance. The note is for artwork that was
+    // asked for and did not arrive.
+    note.textContent = '';
+    lean(0);
+
+    if (!j) {
+      [front, back, ...edgeEls].forEach((img) => img.removeAttribute('src'));
+      return;
+    }
+
+    const art = (view) => `${JERSEY_DIR}/${j.slug}-${view}.png`;
+    front.src = art('front');
+    back.src = art('back');
+    // The body is extruded from the front silhouette alone: the two views cut
+    // the same outline, so a second stack would cost images and change nothing.
+    edgeEls.forEach((img) => { img.src = art('front'); });
+    root.style.setProperty('--j-tint', j.tint);
+    face('front', { instant: true });
+    describe();
+  }
+
+  /** A turn on the way in, so the shirt arrives as an object, not a picture. */
+  function reveal() {
+    face('front', { instant: true });
+    if (motionOff()) return;
+    setTurn(ry - 40, { instant: true });
+    requestAnimationFrame(() => requestAnimationFrame(() => face('front')));
+  }
+
+  show('');
+  return { show, face, reveal, focus: () => stage.focus({ preventScroll: true }) };
+}
+
+/**
+ * Drops the jersey card into the race-category question and wires the pop-up.
+ * The dialog itself is static markup, so only the card has to be cloned.
+ */
+function mountJersey() {
+  const tpl = $('tpl-jersey');
+  const field = document.querySelector('.field[data-for="race_category"]');
+  if (!tpl || !field) return;
+
+  const err = field.querySelector('.err-msg');
+  (err?.parentNode || field).insertBefore(tpl.content.cloneNode(true), err ?? null);
+
+  const mini = $('jersey-mini');
+  if (mini) jerseyViews.mini = makeJersey(mini);
+
+  const big = $('jersey-big');
+  const faceBtns = [...document.querySelectorAll('.jersey-facebtn')];
+  if (big) {
+    jerseyViews.big = makeJersey(big, {
+      onTurn: (side) => faceBtns.forEach((b) => {
+        const on = b.dataset.face === side;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', String(on));
+      }),
+    });
+    faceBtns.forEach((b) =>
+      b.addEventListener('click', () => jerseyViews.big.face(b.dataset.face)));
+  }
+
+  // No openId: both buttons want the dialog set up before it is shown, so the
+  // opening is ours. Escape and the backdrop still come from wireModal.
+  wireModal('jersey-modal', null, 'jersey-close');
+  $('jersey-open')?.addEventListener('click', openJersey);
+  $('size-jersey')?.addEventListener('click', openJersey);
+
+  // Whichever control the schema produced for the distance question.
+  document.querySelectorAll('[name="race_category"]').forEach((el) =>
+    el.addEventListener('change', onCategoryChange));
+
+  refreshJersey();
+}
+
+function openJersey() {
+  const modal = $('jersey-modal');
+  if (!modal) return;
+  refreshJersey();
+  openModal(modal);
+  jerseyViews.big?.reveal();
+  // Focus lands on the shirt rather than the close button, so the arrow keys
+  // do the obvious thing and the label describes what is on screen.
+  jerseyViews.big?.focus();
+}
+
+/**
+ * Picking a distance shows the shirt that comes with it — once per distance.
+ * Announcing itself every time somebody changed their mind would be a pop-up
+ * in the bad sense; never announcing itself would leave the whole thing behind
+ * a button nobody presses.
+ */
+function onCategoryChange() {
+  refreshJersey();
+  const cat = (values().race_category || '').trim();
+  if (JERSEYS[cat] && !jerseySeen.has(cat)) {
+    jerseySeen.add(cat);
+    openJersey();
+  }
+}
+
+/** Points every part of the page that mentions the jersey at the chosen one. */
+function refreshJersey() {
+  const cat = (values().race_category || '').trim();
+  const j = JERSEYS[cat];
+
+  jerseyViews.mini?.show(cat);
+  jerseyViews.big?.show(cat);
+
+  $('jersey-card')?.classList.toggle('is-set', !!j);
+
+  const name = $('jersey-name');
+  if (name) {
+    name.innerHTML = j
+      ? `${esc(cat)} <span class="jersey-colour">${esc(j.colourway)}</span>`
+      : 'Choose a distance';
+  }
+
+  const hint = $('jersey-hint');
+  if (hint) {
+    hint.textContent = j
+      ? 'Tap the shirt to turn it round, or open it in 3D for a closer look.'
+      : 'Each distance has its own colourway. Pick one above to see the shirt.';
+  }
+
+  $('jersey-open')?.toggleAttribute('hidden', !j);
+  $('size-jersey')?.toggleAttribute('hidden', !j);
+
+  const sizeCat = $('size-jersey-cat');
+  if (sizeCat) sizeCat.textContent = cat || 'race';
+
+  const title = $('jersey-title');
+  if (title) title.textContent = j ? `${cat} race jersey` : 'Race jersey';
+
+  const sub = $('jersey-sub');
+  if (sub) sub.textContent = j ? `${j.colourway} · front and back` : 'Front and back';
 }
 
 /**
@@ -804,6 +1145,10 @@ function wireEvents() {
     document.querySelectorAll('.field').forEach((el) => el.classList.remove('invalid', 'done'));
     document.querySelectorAll('.err-msg').forEach((p) => (p.textContent = ''));
     refreshSdSummary();
+    // A fresh runner is a fresh distance: empty the jersey card, and let the
+    // shirt introduce itself again rather than staying on the last one's.
+    jerseySeen.clear();
+    refreshJersey();
     $('done').hidden = true;
     form.hidden = false;
     $('progress-card').hidden = false;

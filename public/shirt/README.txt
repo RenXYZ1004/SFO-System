@@ -14,3 +14,6 @@ measurements can actually be read on a phone. A landscape image around
 With no file here the tile shows an "Image coming soon" placeholder and
 hides the "Full size" link, so the question still works — runners simply
 pick from the size chips as before.
+
+The per-category jersey artwork shown in 3D lives in jersey/ — see
+jersey/README.txt for the eight filenames it expects.
