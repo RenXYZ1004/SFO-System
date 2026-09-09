@@ -496,8 +496,28 @@ function refreshPaymentInfo() {
 
 }
 
+/* ---------- shirt size guide ---------- */
+
 /**
- * Drops the shirt size chart inside the shirt-size question itself, so the
+ * The measurements the chart carries, in the order its columns run. A third
+ * one — a sleeve length, say — is an entry here plus a matching key on each
+ * size in lib/form-schema.js, and nothing else: the table builds itself from
+ * this list, and a size with no figure for a column charts a dash rather than
+ * quietly reading as zero.
+ *
+ * The two brackets on the diagram are width and length by name, because those
+ * are the two dimensions there is a picture to point at. A further column
+ * joins the table without joining the drawing.
+ */
+const SIZE_COLUMNS = [
+  { key: 'width', label: 'Width' },
+  { key: 'length', label: 'Length' },
+];
+
+const sizeField = () => SCHEMA?.fields.find((f) => f.name === 'shirt_size') || null;
+
+/**
+ * Drops the size guide inside the shirt-size question itself, so the
  * measurements are in front of the reader while they pick — not in a separate
  * card they have to go looking for.
  */
@@ -507,12 +527,96 @@ function mountSizeGuide() {
   if (!tpl || !field) return;
 
   // Goes just before the error line, so a validation message stays next to
-  // the chips. A choice question wraps its own in a <fieldset>, so the anchor
-  // decides the parent rather than the other way round.
+  // the control. A choice question wraps its own in a <fieldset>, so the
+  // anchor decides the parent rather than the other way round.
   const err = field.querySelector('.err-msg');
   const parent = err?.parentNode || field;
   parent.insertBefore(tpl.content.cloneNode(true), err ?? null);
-  wireShots(field);
+
+  buildSizeTable();
+
+  // Whichever control the schema produced for the size question — nine sizes
+  // is past the chip threshold, so today it is a <select>.
+  document.querySelectorAll('[name="shirt_size"]').forEach((el) =>
+    el.addEventListener('change', refreshSizeGuide));
+
+  // Artwork that is not there yet falls back to the outline, rather than
+  // leaving a broken picture next to the measurements.
+  $('sg-shirt')?.addEventListener('error', () => {
+    const img = $('sg-shirt');
+    img.hidden = true;
+    document.querySelector('.sg-art')?.classList.add('is-ghost');
+  });
+
+  refreshSizeGuide();
+}
+
+/** Draws the chart itself: one row per size the question offers. */
+function buildSizeTable() {
+  const f = sizeField();
+  const head = $('sg-head');
+  const body = $('sg-rows');
+  if (!f || !head || !body) return;
+
+  const chart = f.sizeChart || {};
+  const sizes = f.options || [];
+
+  head.innerHTML = `<tr><th scope="col">Size</th>${
+    SIZE_COLUMNS.map((c) => `<th scope="col">${esc(c.label)}</th>`).join('')
+  }</tr>`;
+
+  body.innerHTML = sizes.map((size) => {
+    const m = chart.measurements?.[size] || {};
+    const cells = SIZE_COLUMNS.map((c) =>
+      `<td>${m[c.key] == null ? '&mdash;' : esc(m[c.key])}</td>`).join('');
+    return `<tr data-size="${esc(size)}"><th scope="row">${esc(size)}</th>${cells}</tr>`;
+  }).join('');
+
+  const cap = $('sg-caption');
+  if (cap && chart.units) cap.textContent = `Measurements in ${chart.units}, garment laid flat`;
+}
+
+/**
+ * Points the guide at the answers so far: the chosen size's row comes forward
+ * and its figures go on the brackets, and the shirt being measured is the one
+ * for the chosen distance rather than a stand-in for some other garment.
+ */
+function refreshSizeGuide() {
+  const guide = document.querySelector('.size-guide');
+  if (!guide) return;
+
+  const v = values();
+  const size = (v.shirt_size || '').trim();
+  const chart = sizeField()?.sizeChart || {};
+  const m = chart.measurements?.[size];
+
+  guide.querySelectorAll('#sg-rows tr').forEach((tr) => {
+    const on = !!size && tr.dataset.size === size;
+    tr.classList.toggle('is-on', on);
+    // aria-current is what tells a screen reader which row is the answer;
+    // the highlight alone says it only to people who can see it.
+    if (on) tr.setAttribute('aria-current', 'true');
+    else tr.removeAttribute('aria-current');
+  });
+
+  // Inches get a ditto mark; anything else is spelled out in the caption and
+  // left off the bracket, where there is no room to explain it.
+  const unit = chart.units === 'inches' ? '&Prime;' : '';
+  const bracket = (el, n) => { if (el) el.innerHTML = n == null ? '&mdash;' : `${esc(n)}${unit}`; };
+  bracket($('sg-w'), m?.width);
+  bracket($('sg-l'), m?.length);
+  guide.classList.toggle('is-sized', !!m);
+
+  const cat = (v.race_category || '').trim();
+  const j = JERSEYS[cat];
+  const img = $('sg-shirt');
+  const art = guide.querySelector('.sg-art');
+  if (img && art) {
+    if (j) img.src = `${JERSEY_DIR}/${j.slug}-front.png`;
+    else img.removeAttribute('src');
+    img.hidden = !j;
+    art.classList.toggle('is-ghost', !j);
+  }
 }
 
 /* ---------- the race jersey, in 3D ---------- */
@@ -804,6 +908,9 @@ function openJersey() {
  */
 function onCategoryChange() {
   refreshJersey();
+  // The guide draws its brackets against this distance's shirt, so it moves
+  // with the distance as well as with the size.
+  refreshSizeGuide();
   const cat = (values().race_category || '').trim();
   if (JERSEYS[cat] && !jerseySeen.has(cat)) {
     jerseySeen.add(cat);
@@ -1149,6 +1256,7 @@ function wireEvents() {
     // shirt introduce itself again rather than staying on the last one's.
     jerseySeen.clear();
     refreshJersey();
+    refreshSizeGuide();
     $('done').hidden = true;
     form.hidden = false;
     $('progress-card').hidden = false;

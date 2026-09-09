@@ -32,6 +32,10 @@ export default function handler(req, res) {
       // the server checks the same rule again regardless.
       pattern: f.pattern,
       patternMessage: f.patternMessage,
+      // The measurements behind the shirt size guide. Nothing on the server
+      // reads them; they travel with the options they describe so the page
+      // cannot end up charting a different set of sizes than it offers.
+      sizeChart: f.sizeChart,
     })),
   });
 }

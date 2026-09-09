@@ -425,29 +425,57 @@ We run because every step can make a difference.
       </div>
     </template>
 
-    <!-- Cloned into the shirt-size question by app.js, so the measurements
-         are on screen while the size is being chosen. -->
+    <!-- Cloned into the shirt-size question by app.js, so the measurements are
+         on screen while the size is being chosen.
+
+         The chart used to be a single flat PNG of a garment nobody receives —
+         a purple singlet, where the race shirt is a sleeved raglan tee in four
+         colourways. It is drawn here instead: the shirt is the same artwork
+         the 3D viewer loads, so the picture cannot disagree with the garment,
+         and the measurements are text rather than pixels, so they can be read
+         on a phone without opening anything. app.js fills both from the
+         schema. -->
     <template id="tpl-shirt-guide">
       <div class="size-guide">
-        <div class="shots size-shots">
-          <figure class="shot">
-            <img src="/shirt/shirt-size.png" loading="lazy" alt="Shirt size chart">
-            <a class="shot-zoom" href="/shirt/shirt-size.png" target="_blank" rel="noopener">
-              <span aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
-                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 4h6v6M20 4l-8 8M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
-                </svg>
-              </span>
-              <span class="shot-zoom-text" aria-hidden="true">Full size</span>
-              <span class="sr">View the shirt size chart at full size</span>
-            </a>
-            <figcaption>Size guide</figcaption>
-          </figure>
+
+        <!-- What the two words on the chart actually mean. People read "width"
+             as "chest measurement" and order a size too big; brackets drawn
+             against the garment are the cheapest way to say "flat, and half
+             way round". -->
+        <div class="sg-diagram">
+          <div class="sg-width">
+            <span class="sg-dim">Width <b id="sg-w">—</b></span>
+            <span class="sg-bar sg-bar-x" aria-hidden="true"></span>
+          </div>
+
+          <div class="sg-art">
+            <img id="sg-shirt" alt="" hidden>
+            <svg class="sg-ghost" viewBox="0 0 100 110" aria-hidden="true" fill="none"
+                 stroke="currentColor" stroke-width="3" stroke-linejoin="round">
+              <path d="M50 9 30 15 8 27l8 20 12-5v58h44V42l12 5 8-20-22-12z"/>
+              <path d="M38 12q12 14 24 0"/>
+            </svg>
+          </div>
+
+          <div class="sg-length">
+            <span class="sg-bar sg-bar-y" aria-hidden="true"></span>
+            <span class="sg-dim">Length <b id="sg-l">—</b></span>
+          </div>
         </div>
+
+        <div class="sg-table-wrap">
+          <table class="sg-table">
+            <caption id="sg-caption">Measurements in inches, garment laid flat</caption>
+            <!-- Both filled from the schema: the sizes on offer and the
+                 measurements charted for them come from the same place. -->
+            <thead id="sg-head"></thead>
+            <tbody id="sg-rows"></tbody>
+          </table>
+        </div>
+
         <p class="size-guide-note">
-          Race shirts are unisex. Open the chart at full size to check the
-          measurements before choosing — sizes cannot be swapped on race day.
+          Race shirts are unisex. Check the measurements against a shirt you
+          already own before choosing — sizes cannot be swapped on race day.
         </p>
         <!-- Unhidden by app.js once a race category is chosen: which shirt you
              are being measured for is decided by the distance, not by this
