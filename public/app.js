@@ -466,7 +466,7 @@ const PAYMENT_GUIDE = {
     note: 'Deposit or transfer the fee to the PNB account above, then upload the deposit slip or transfer receipt below.',
   },
   'Employee': {
-    note: 'Nothing to send — the fee is taken from your payroll in three equal deductions, starting November 15, 2026. Your authorisation above is the record, so there is no receipt to upload.',
+    note: 'Nothing to send. The fee is taken from your payroll in three equal deductions, starting November 15, 2026. Your authorisation above is the record, so there is no receipt to upload.',
   },
 };
 
@@ -1256,7 +1256,7 @@ function checkField(f, v, all) {
   const value = (v || '').trim();
   if (f.type === 'file') {
     if (!value) return f.required ? 'Please upload your proof of payment' : '';
-    return /^https:\/\/\S+$/.test(value) ? '' : 'The upload did not complete — please try again';
+    return /^https:\/\/\S+$/.test(value) ? '' : 'The upload did not complete. Please try again';
   }
   if (f.required && !value) return 'This question is required';
   if (!value) return '';
@@ -1515,7 +1515,7 @@ function wireUpload(f) {
     if (!file) return;
 
     if (file.size > MAX_UPLOAD * 3) {
-      setFieldState(f.name, `That file is ${kb(file.size)} — too large to upload.`, '');
+      setFieldState(f.name, `That file is ${kb(file.size)}, which is too large to upload.`, '');
       return;
     }
 
@@ -1667,7 +1667,7 @@ async function onSubmit(e) {
     data = await res.json();
   } catch {
     resetButton();
-    banner('Network error — your registration was not sent. Please try again.');
+    banner('Network error. Your registration was not sent, so please try again.');
     return;
   }
   resetButton();
@@ -1684,7 +1684,7 @@ async function onSubmit(e) {
       focusFirstInvalid();
     } else {
       banner(esc(data.error || 'Something went wrong. Please try again.') +
-        (data.uploadCleared ? ' Your file was removed — please attach it again.' : ''));
+        (data.uploadCleared ? ' Your file was removed, so please attach it again.' : ''));
       if (data.uploadCleared) resetUploads();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
