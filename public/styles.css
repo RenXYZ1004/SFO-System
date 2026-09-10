@@ -15,11 +15,14 @@
   --pink:#ffc2dd;     /* FOR A CAUSE */
   --green:#0c7c4a;    /* tagline */
 
-  /* the rest of the page takes the wordmark's purple -> pink */
-  --brand-1:#5b2183;
-  --brand-2:#c4327f;
+  /* The rest of the page takes one purple out of the wordmark and stays on it.
+     There used to be a --brand-1/--brand-2 pair here, ramped purple to pink
+     across every button, bar and dialog header on the site; the wordmark is
+     where that ramp means something, and running it everywhere else left the
+     page with no colour it could use to mean "this one". */
   --accent:#6d2794;
   --accent-ink:#fff;
+  --accent-hover:#571d78;
   --accent-soft:rgba(109,39,148,.10);
   --accent-ring:rgba(109,39,148,.28);
 
@@ -42,7 +45,10 @@
   --warn-line:#f0dcb4;
   --warn-ink:#7d5a15;
 
-  --r:14px;
+  /* Panel corner. Kept modest on purpose: at 14px every card on the page
+     read as a pill, which is the default look of a page nobody chose a
+     radius for. Inputs sit a step tighter again at 8px. */
+  --r:10px;
   --shadow:0 1px 2px rgba(16,16,20,.05), 0 8px 24px -12px rgba(16,16,20,.18);
   --font:"Segoe UI",Roboto,-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;
 }
@@ -62,10 +68,9 @@
     --aqua-2:#57c4bf;
     --aqua-3:#3aada8;
 
-    --brand-1:#a05fd0;
-    --brand-2:#f06fb0;
     --accent:#c48ae8;
     --accent-ink:#25082f;
+    --accent-hover:#d3a3f0;
     --accent-soft:rgba(196,138,232,.16);
     --accent-ring:rgba(196,138,232,.34);
 
@@ -110,36 +115,18 @@ body{
   display:flex;justify-content:center;align-items:center;
   gap:clamp(16px,5.5vw,36px);margin:0 0 26px;
 }
-/* No container: the PNGs are transparent, so the glow is a drop-shadow that
-   traces each logo's actual silhouette rather than a box behind it. */
+/* No container: the PNGs are transparent, so what separates them from the aqua
+   is a drop-shadow tracing each logo's own silhouette rather than a box behind
+   it. One shadow, holding still. These are three institutions' marks, and a
+   pulsing halo on a school crest reads as decoration applied to a logo by
+   someone with no standing to decorate it. */
 .logo{
   height:var(--logo-h);width:auto;display:block;object-fit:contain;
-  animation:logoGlow 3.6s ease-in-out infinite;
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+  filter:drop-shadow(0 2px 5px rgba(58,18,89,.28));
 }
 /* Optical sizing: a tall shield reads smaller than a wide wordmark at equal height. */
 .logo-sisc{height:calc(var(--logo-h) * 1.12)}
 .logo-filinvest{height:calc(var(--logo-h) * .88)}
-
-/* Stagger the pulse so the three breathe in sequence, not in lockstep. */
-.logo:nth-child(2){animation-delay:.6s}
-.logo:nth-child(3){animation-delay:1.2s}
-.logo:hover{transform:translateY(-4px) scale(1.06)}
-
-@keyframes logoGlow{
-  0%,100%{
-    filter:
-      drop-shadow(0 0 4px rgba(58,18,89,.50))
-      drop-shadow(0 0 13px rgba(58,18,89,.32))
-      drop-shadow(0 3px 7px rgba(58,18,89,.30));
-  }
-  50%{
-    filter:
-      drop-shadow(0 0 8px rgba(58,18,89,.78))
-      drop-shadow(0 0 24px rgba(58,18,89,.55))
-      drop-shadow(0 3px 9px rgba(58,18,89,.38));
-  }
-}
 
 .kicker{
   margin:0 0 14px;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;
@@ -211,7 +198,7 @@ body{
 /* ---------- proceed (intro -> form) ---------- */
 .proceed-card{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  box-shadow:var(--shadow);padding:20px;text-align:center;
+  padding:20px;text-align:center;
 }
 .btn-arrow{display:inline-flex;transition:transform .15s}
 .btn:hover .btn-arrow{transform:translateX(3px)}
@@ -238,15 +225,22 @@ body{
   box-shadow:var(--shadow);padding:24px 24px 22px;margin:-26px 0 16px;
   position:relative;z-index:2;
 }
+/* Ink, not accent. Colouring a heading purple because purple is available is
+   how everything on a page ends up shouting; the accent is worth more spent
+   on the things that are actually actionable. */
 .welcome-h{
-  margin:0 0 12px;font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--accent);
+  margin:0 0 12px;font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink);
 }
 .welcome p{margin:0 0 11px;color:var(--ink-2);font-size:15px;line-height:1.65}
 .welcome p:last-child{margin-bottom:0}
 .welcome strong{color:var(--ink);font-weight:650}
+/* Where the money goes is the most important sentence on the page, so it is
+   set apart — but by a rule and a little more room, the way a pull quote is,
+   rather than by being put in a tinted box. A filled panel inside a filled
+   card inside a page of filled cards stops registering as emphasis. */
 .cause{
-  background:var(--accent-soft);border-left:3px solid var(--accent);
-  border-radius:0 9px 9px 0;padding:12px 14px;margin-top:14px !important;
+  border-left:2px solid var(--accent);padding:2px 0 2px 15px;
+  margin-top:16px !important;color:var(--ink) !important;
 }
 /* Whichever block comes first sits over the hero wave — not both. */
 #intro-notice:not([hidden]){margin-top:-26px;position:relative;z-index:2}
@@ -290,7 +284,10 @@ body{
 .modal-head{
   display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
   padding:20px 22px 16px;border-bottom:1px solid var(--line);
-  background:linear-gradient(135deg,var(--aqua-1),var(--aqua-2));
+  /* Flat aqua. The hero earns its gradient — it is the poster, and it is
+     600px tall. Repeating it across a 70px dialog strip is the same effect
+     at a size too small to read as anything but a smudge. */
+  background:var(--aqua-2);
 }
 .modal-head h2{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--purple)}
 .modal-sub{margin:4px 0 0;font-size:13px;color:var(--purple);opacity:.78}
@@ -367,35 +364,43 @@ body{
 }
 
 /* ---------- before you register ---------- */
-.prep .step{background:var(--warn-bg);color:var(--warn-ink);font-size:15px}
 .prep-lead{margin:14px 0 12px;color:var(--ink-2);font-size:14.5px}
 .checklist{
   list-style:none;counter-reset:c;margin:0 0 16px;padding:0;
 }
 .checklist li{
-  counter-increment:c;position:relative;padding:0 0 0 34px;margin:0 0 11px;
+  counter-increment:c;position:relative;padding:0 0 0 27px;margin:0 0 11px;
   color:var(--ink-2);font-size:14.5px;line-height:1.6;
 }
+/* Numbered the way a numbered list is normally numbered. The disc these used
+   to sit in turned five plain reminders into five badges, which is a lot of
+   apparatus for "read this before you register". */
 .checklist li::before{
-  content:counter(c);position:absolute;left:0;top:1px;
-  width:22px;height:22px;border-radius:50%;
-  background:var(--accent-soft);color:var(--accent);
-  font-size:12px;font-weight:700;display:grid;place-items:center;
+  content:counter(c) ".";position:absolute;left:0;top:0;width:20px;
+  text-align:right;
+  color:var(--accent);font-size:13.5px;font-weight:800;
+  font-variant-numeric:tabular-nums;
 }
 .checklist strong{color:var(--ink);font-weight:650}
 .contact{
   margin:14px 0 4px;font-size:13.5px;color:var(--muted);line-height:1.7;
   word-break:break-word;
 }
+/* The only standing notice on the page — it is always true, and it is not a
+   problem. The filled panel it used to sit in is the treatment the error and
+   warning banners need in order to interrupt; spending it on a permanent
+   fixture leaves nothing louder for the messages that actually arrive. */
 .notice.info{
-  border-color:var(--info-line);background:var(--info-bg);color:var(--info-ink);
-  margin:0;
+  border:0;border-left:2px solid var(--info-ink);border-radius:0;
+  background:none;color:var(--ink-2);
+  padding:2px 0 2px 15px;margin:0;
 }
+.notice.info strong{color:var(--ink)}
 
 /* ---------- progress ---------- */
 .progress-card{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  box-shadow:var(--shadow);padding:14px 16px;margin:0 0 16px;
+  padding:14px 16px;margin:0 0 16px;
 }
 .progress-top{
   display:flex;justify-content:space-between;align-items:baseline;gap:12px;
@@ -404,24 +409,34 @@ body{
 .progress-pct{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
 .track{height:7px;border-radius:99px;background:var(--line);overflow:hidden}
 .fill{
-  height:100%;width:0;border-radius:99px;
-  background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+  height:100%;width:0;border-radius:99px;background:var(--accent);
   transition:width .35s cubic-bezier(.4,0,.2,1);
 }
 
-/* ---------- section cards ---------- */
+/* ---------- section cards ----------
+
+   Bordered, not lifted. The shadow used to be on every panel on the page at
+   equal strength, which is the same as being on none of them — nothing was
+   nearer the reader than anything else, and eight identical floating slabs is
+   the look of a page assembled out of a component library. It is kept for the
+   two things that genuinely sit above the page: the welcome card, which
+   overlaps the hero, and the confirmation card at the end. */
 .section{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  box-shadow:var(--shadow);margin:0 0 16px;overflow:hidden;
+  margin:0 0 16px;overflow:hidden;
 }
 .section-head{
   display:flex;align-items:center;gap:12px;
   padding:16px 20px;border-bottom:1px solid var(--line);
 }
+/* A numeral, not a badge. A digit in a tinted disc is the house style of every
+   template on the internet, and it makes the number louder than the heading it
+   is numbering. Set as a figure in the accent, it counts the sections without
+   competing with them. */
 .step{
-  flex:0 0 auto;width:27px;height:27px;border-radius:50%;
-  background:var(--accent-soft);color:var(--accent);
-  font-size:13px;font-weight:700;display:grid;place-items:center;
+  flex:0 0 auto;min-width:1.15em;text-align:right;
+  color:var(--accent);font:800 13px var(--font);
+  font-variant-numeric:tabular-nums;
 }
 .section-head h2{margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em}
 .section-body{padding:4px 20px 6px}
@@ -436,7 +451,7 @@ body{
 
 input[type=text],input[type=email],input[type=tel],textarea,select{
   width:100%;padding:11px 13px;font:inherit;color:var(--ink);
-  background:var(--card);border:1px solid var(--line-2);border-radius:10px;
+  background:var(--card);border:1px solid var(--line-2);border-radius:8px;
   transition:border-color .15s,box-shadow .15s;
 }
 textarea{min-height:88px;resize:vertical;line-height:1.5}
@@ -504,8 +519,7 @@ legend{padding:0}
 .upload-status.bad{color:var(--err);font-weight:600}
 .upload-track{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:10px}
 .upload-fill{
-  height:100%;width:0;border-radius:99px;
-  background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+  height:100%;width:0;border-radius:99px;background:var(--accent);
   transition:width .3s ease;
 }
 
@@ -531,22 +545,27 @@ legend{padding:0}
 /* ---------- submit ---------- */
 .submit-row{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  box-shadow:var(--shadow);padding:18px 20px;text-align:center;
+  padding:18px 20px;text-align:center;
 }
+/* One flat brand purple. A two-stop gradient across a button says nothing
+   about what the button does — the wordmark is where this event's purple and
+   pink actually mean something, and repeating them here only spends the
+   effect. Solid also keeps the label legible in both themes, which a fixed
+   white-on-gradient did not. */
 .btn{
-  width:100%;border:0;border-radius:11px;cursor:pointer;
-  background:linear-gradient(135deg,var(--brand-1),var(--brand-2));color:#fff;
+  width:100%;border:0;border-radius:10px;cursor:pointer;
+  background:var(--accent);color:var(--accent-ink);
   padding:14px 26px;font:600 16px var(--font);letter-spacing:.01em;
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
-  transition:filter .15s,transform .06s;
+  transition:background .15s,transform .06s;
 }
-.btn:hover:not(:disabled){filter:brightness(1.07)}
+.btn:hover:not(:disabled){background:var(--accent-hover)}
 .btn:active:not(:disabled){transform:translateY(1px)}
 .btn:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-ring)}
 .btn:disabled{opacity:.62;cursor:default}
 .spinner{
   display:none;width:16px;height:16px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+  border:2px solid currentColor;opacity:.45;border-top-color:transparent;
   animation:spin .7s linear infinite;
 }
 .btn.loading .spinner{display:block}
@@ -623,14 +642,7 @@ a:hover{text-decoration:underline}
   .modal[open] .shot{animation:none;opacity:1;transform:none}
   .shot img,.modal-close{transition:none}
   .shot:hover img{transform:none}
-  /* Keep the glow, drop the pulse. */
-  .logo{
-    animation:none;transition:none;
-    filter:
-      drop-shadow(0 0 6px rgba(58,18,89,.60))
-      drop-shadow(0 0 18px rgba(58,18,89,.40));
-  }
-  .logo:hover{transform:none}
+  /* The logos have nothing left to sit still: they no longer pulse or lift. */
 }
 
 /* ============================================================
@@ -648,10 +660,10 @@ a:hover{text-decoration:underline}
   transform:translateY(-1px);text-decoration:none;
 }
 .doc-link:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-ring)}
+/* The icon, not an icon in a tile. A 34px tinted square behind a 17px glyph is
+   two shapes doing one glyph's job, and the page had four of them. */
 .doc-icon{
-  flex:0 0 auto;width:34px;height:34px;border-radius:9px;
-  background:var(--accent-soft);color:var(--accent);
-  display:grid;place-items:center;
+  flex:0 0 auto;display:grid;place-items:center;color:var(--accent);
 }
 .doc-text{display:flex;flex-direction:column;min-width:0}
 .doc-name{font-size:14.5px;font-weight:650;color:var(--ink);letter-spacing:-.01em}
@@ -848,12 +860,14 @@ a:hover{text-decoration:underline}
 .progress-card{position:sticky;top:10px;z-index:5}
 
 .section.complete .section-head{border-bottom-color:var(--line)}
+/* Done: the number gives way to a tick, in the green that means "settled"
+   everywhere else on the page. */
 .section.complete .step{
-  background:rgba(15,123,69,.13);color:var(--ok);
-  font-size:0;                     /* hide the number, keep the circle */
+  color:var(--ok);
+  font-size:0;                     /* the numeral steps aside for the tick */
 }
 .section.complete .step::after{
-  content:"\2713";font-size:14px;font-weight:700;line-height:1;
+  content:"\2713";font-size:15px;font-weight:700;line-height:1;
 }
 .section.complete .section-head h2{color:var(--ink-2)}
 
@@ -1108,10 +1122,8 @@ a:hover{text-decoration:underline}
      the column would otherwise end in a hole the size of the shirt. Centred,
      the two read as a figure beside a table. */
   .sg-diagram{margin-bottom:0;align-self:center}
-  /* Fills its column instead of sitting in the middle of it. Left to find its
-     own width the chart comes out around 170px, and a narrow table adrift in
-     a wide track reads as two things that failed to line up. */
-  .sg-table-wrap{max-width:none;margin:2px 0 0}
+  /* The chart's own width override lives with the chart, further down: put
+     here it would be overruled by the base rule that comes after it. */
 }
 
 /* ---------- the diagram ---------- */
@@ -1179,6 +1191,15 @@ a:hover{text-decoration:underline}
    fits without scrolling sideways, and the chosen row is a whole line the eye
    can land on. */
 .sg-table-wrap{max-width:360px;margin:0 auto;overflow-x:auto}
+/* Beside the drawing, the chart fills its column instead of sitting in the
+   middle of it: left to find its own width it comes out around 175px, and a
+   narrow table adrift in a wide track reads as two things that failed to line
+   up. Auto margins are what make a grid item shrink to fit rather than
+   stretch, so the margin has to go too — and this has to come after the rule
+   above to beat it, which is why it is here and not up in the layout block. */
+@media (min-width:620px){
+  .sg-table-wrap{max-width:none;margin:2px 0 0}
+}
 /* Separated rather than collapsed, with the spacing taken back out: a
    collapsed table discards border-radius on its cells, and the rounded ends
    are what make the highlighted row read as one pill rather than a band
@@ -1287,7 +1308,6 @@ a:hover{text-decoration:underline}
 /* ============================================================
    Race categories (intro page)
    ============================================================ */
-.race .step{background:var(--accent-soft);color:var(--accent)}
 .race-lead{margin:14px 0 13px;color:var(--ink-2);font-size:14.5px;line-height:1.6}
 
 /* The poster carries the distances and the fees, so it is never cropped and
@@ -1323,10 +1343,13 @@ a:hover{text-decoration:underline}
   display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
   list-style:none;margin:13px 0 0;padding:0;
 }
+/* These are a legend for the poster above, not four buttons. Outlined rather
+   than filled, so they read as labels — and so they stop looking tappable,
+   which they never were. */
 .race-chip{
-  padding:7px 15px;border-radius:99px;
-  background:var(--accent-soft);border:1px solid var(--accent-ring);
-  color:var(--accent);font-size:14px;font-weight:800;letter-spacing:.02em;
+  padding:6px 14px;border-radius:99px;
+  border:1px solid var(--line-2);color:var(--ink-2);
+  font-size:13.5px;font-weight:700;letter-spacing:.03em;
 }
 .race-note{
   margin:11px 0 4px;font-size:12.5px;color:var(--muted);
@@ -1377,10 +1400,9 @@ a:hover{text-decoration:underline}
    be sent back, and every target has to be big enough to hit. */
 @media (hover:none){
   .shot:hover img{transform:none}
-  .logo:hover{transform:none}
   .cause-btn:hover{background:var(--card);border-color:var(--accent-ring);transform:none}
   .cause-btn:hover .cause-btn-chev{transform:none}
-  .btn:hover:not(:disabled){filter:none}
+  .btn:hover:not(:disabled){background:var(--accent)}
 }
 
 @media (pointer:coarse){
