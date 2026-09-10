@@ -499,22 +499,26 @@ function refreshPaymentInfo() {
 /* ---------- shirt size guide ---------- */
 
 /**
- * The measurements the chart carries, in the order its columns run. A third
- * one — a sleeve length, say — is an entry here plus a matching key on each
- * size in lib/form-schema.js, and nothing else: the table builds itself from
- * this list, and a size with no figure for a column charts a dash rather than
- * quietly reading as zero.
- *
- * The two brackets on the diagram are width and length by name, because those
- * are the two dimensions there is a picture to point at. A further column
- * joins the table without joining the drawing.
+ * The shirt comes in two cuts, and which cut a size belongs to is carried by
+ * the size string itself — there is no second answer for it. Everything here
+ * reads the cuts out of the schema (lib/form-schema.js), so adding a size, a
+ * whole new cut, or another measured column is a change there and nowhere
+ * else: the tabs, the menu, the table and the brackets all build themselves
+ * from the same list.
  */
-const SIZE_COLUMNS = [
-  { key: 'width', label: 'Width' },
-  { key: 'length', label: 'Length' },
-];
-
 const sizeField = () => SCHEMA?.fields.find((f) => f.name === 'shirt_size') || null;
+const sizeFits = () => sizeField()?.sizeChart?.fits || [];
+const fitById = (id) => sizeFits().find((f) => f.id === id) || null;
+/** Which cut a size belongs to, or null for a size no chart claims. */
+const fitOfSize = (size) =>
+  sizeFits().find((f) => f.sizes.some((s) => s.value === size)) || null;
+const sizeRow = (fit, size) => fit?.sizes.find((s) => s.value === size) || null;
+
+/** The cut whose chart is on screen. Follows the answer once there is one. */
+let shownFit = '';
+
+/** 22.094 keeps its figures; 28 does not grow ".000" to match it. */
+const num = (n) => String(Number(n));
 
 /**
  * Drops the size guide inside the shirt-size question itself, so the
@@ -533,12 +537,26 @@ function mountSizeGuide() {
   const parent = err?.parentNode || field;
   parent.insertBefore(tpl.content.cloneNode(true), err ?? null);
 
-  buildSizeTable();
+  buildFitTabs();
 
-  // Whichever control the schema produced for the size question — nine sizes
-  // is past the chip threshold, so today it is a <select>.
+  // The chart rows are the other way to answer the question: reading the
+  // measurements and picking a size are one movement rather than two, and
+  // the <select> above stays the control that actually holds the answer.
+  $('sg-rows')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sg-pick');
+    if (btn) chooseSize(btn.closest('tr')?.dataset.size || '');
+  });
+
+  // Whichever control the schema produced for the size question — twenty-one
+  // sizes is well past the chip threshold, so it is a grouped <select>.
   document.querySelectorAll('[name="shirt_size"]').forEach((el) =>
-    el.addEventListener('change', refreshSizeGuide));
+    el.addEventListener('change', () => {
+      // Answering from the menu turns the chart to the cut that was chosen,
+      // so the two are never showing different things.
+      const fit = fitOfSize((values().shirt_size || '').trim());
+      if (fit && fit.id !== shownFit) showFit(fit.id);
+      else refreshSizeGuide();
+    }));
 
   // Artwork that is not there yet falls back to the outline, rather than
   // leaving a broken picture next to the measurements.
@@ -548,32 +566,146 @@ function mountSizeGuide() {
     document.querySelector('.sg-art')?.classList.add('is-ghost');
   });
 
+  // Whichever cut is charted first is the one on screen until an answer says
+  // otherwise. A schema with no chart at all still gets a wired-up guide.
+  const first = sizeFits()[0]?.id;
+  if (first) showFit(first); else refreshSizeGuide();
+}
+
+/** Writes a size into the real control, and tells the form it changed. */
+function chooseSize(size) {
+  const el = document.querySelector('[name="shirt_size"]');
+  const f = sizeField();
+  if (!el || !f || !size) return;
+  el.value = size;
+  // The form's own listeners do the rest — the progress bar, the guide, the
+  // section tick — so picking from the chart and picking from the menu land
+  // in exactly the same place.
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+
+  // Except the answered tick, which everywhere else waits for the control to
+  // be left. Nothing is going to blur a <select> that was never focused, and
+  // a question that has just been answered should not still be reading as
+  // outstanding.
+  const all = values();
+  setFieldState(f.name, checkField(f, all[f.name], all), all[f.name]);
+}
+
+/* ---------- the cut tabs ---------- */
+
+function buildFitTabs() {
+  const wrap = $('sg-fits');
+  if (!wrap) return;
+
+  wrap.innerHTML = sizeFits().map((f) => `
+    <button type="button" class="sg-fit" role="tab" data-fit="${esc(f.id)}"
+            id="sg-tab-${esc(f.id)}" aria-controls="sg-panel"
+            aria-selected="false" tabindex="-1">
+      <span class="sg-fit-name">${esc(f.label)}</span>
+      <span class="sg-fit-sub">${esc(f.tagline)}</span>
+    </button>`).join('');
+
+  wrap.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sg-fit');
+    if (btn) showFit(btn.dataset.fit);
+  });
+
+  // A tablist is expected to move under the arrow keys, with one tab stop for
+  // the whole set — otherwise reaching the size menu means tabbing past every
+  // cut on offer.
+  wrap.addEventListener('keydown', (e) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[e.key];
+    if (step === undefined) return;
+    e.preventDefault();
+    const fits = sizeFits();
+    const at = fits.findIndex((f) => f.id === shownFit);
+    const next = !Number.isFinite(step)
+      ? (step < 0 ? 0 : fits.length - 1)
+      : (at + step + fits.length) % fits.length;
+    showFit(fits[next]?.id);
+    $(`sg-tab-${fits[next]?.id}`)?.focus();
+  });
+}
+
+/** Turns the guide to one cut: its tab, its columns, its rows, its brackets. */
+function showFit(id) {
+  const fit = fitById(id);
+  if (!fit) return;
+  shownFit = fit.id;
+
+  document.querySelectorAll('.sg-fit').forEach((b) => {
+    const on = b.dataset.fit === fit.id;
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+
+  const panel = $('sg-panel');
+  if (panel) panel.setAttribute('aria-labelledby', `sg-tab-${fit.id}`);
+
+  const note = $('sg-fit-note');
+  if (note) note.textContent = fit.note || '';
+
+  buildSizeTable(fit);
+  buildMeasureNotes(fit);
   refreshSizeGuide();
 }
 
-/** Draws the chart itself: one row per size the question offers. */
-function buildSizeTable() {
-  const f = sizeField();
+/* ---------- the chart ---------- */
+
+/** Draws one cut's chart: one row per size, one column per measurement. */
+function buildSizeTable(fit) {
   const head = $('sg-head');
   const body = $('sg-rows');
-  if (!f || !head || !body) return;
+  if (!head || !body) return;
 
-  const chart = f.sizeChart || {};
-  const sizes = f.options || [];
+  const unit = sizeField()?.sizeChart?.units === 'inches' ? '&Prime;' : '';
+  // A figure is a measurement and takes the mark; a cross-reference like the
+  // kids chart's "5XS" is a name and does not.
+  const cell = (v) =>
+    v == null ? '<span class="sg-none">&mdash;</span>'
+      : typeof v === 'number' ? `${num(v)}${unit}` : esc(v);
 
   head.innerHTML = `<tr><th scope="col">Size</th>${
-    SIZE_COLUMNS.map((c) => `<th scope="col">${esc(c.label)}</th>`).join('')
+    fit.columns.map((c) => `<th scope="col">${esc(c.label)}</th>`).join('')
   }</tr>`;
 
-  body.innerHTML = sizes.map((size) => {
-    const m = chart.measurements?.[size] || {};
-    const cells = SIZE_COLUMNS.map((c) =>
-      `<td>${m[c.key] == null ? '&mdash;' : esc(m[c.key])}</td>`).join('');
-    return `<tr data-size="${esc(size)}"><th scope="row">${esc(size)}</th>${cells}</tr>`;
+  body.innerHTML = fit.sizes.map((s) => {
+    const cells = fit.columns.map((c) => `<td>${cell(s[c.key])}</td>`).join('');
+    return `<tr data-size="${esc(s.value)}">
+      <th scope="row">
+        <button type="button" class="sg-pick">${esc(s.value)}</button>
+      </th>${cells}</tr>`;
   }).join('');
 
+  // Short on purpose: the drawing beside it already shows what the chest
+  // figure is and where it comes from, so the caption only has to say that
+  // the rows can be tapped — which nothing else on the page says.
   const cap = $('sg-caption');
-  if (cap && chart.units) cap.textContent = `Measurements in ${chart.units}, garment laid flat`;
+  if (cap) cap.textContent = `${fit.label} · tap a row to choose that size.`;
+}
+
+/**
+ * The measuring instructions off the foot of the supplier's chart — but only
+ * for the measurements this cut actually charts. The kids shirt has no body
+ * length, so explaining how to measure one would be answering a question
+ * nobody on that tab is holding.
+ */
+function buildMeasureNotes(fit) {
+  const list = $('sg-how-list');
+  const how = sizeField()?.sizeChart?.measure || {};
+  if (!list) return;
+
+  list.innerHTML = fit.columns
+    .map((c) => how[c.key])
+    .filter(Boolean)
+    .map((m) => `<div class="sg-how-row">
+      <dt>${esc(m.label)}</dt>
+      <dd>${esc(m.text)}</dd>
+    </div>`).join('');
+
+  const note = $('sg-how-note');
+  if (note) note.textContent = how.note || '';
 }
 
 /**
@@ -587,11 +719,14 @@ function refreshSizeGuide() {
 
   const v = values();
   const size = (v.shirt_size || '').trim();
-  const chart = sizeField()?.sizeChart || {};
-  const m = chart.measurements?.[size];
+  const fit = fitById(shownFit);
+  // Only claim a size on the chart that is on screen. Choosing "Kids 14" and
+  // then reading the unisex tab must not light up its 5XS row: same chest,
+  // different shirt, and that is the whole reason the two are kept apart.
+  const row = sizeRow(fit, size);
 
   guide.querySelectorAll('#sg-rows tr').forEach((tr) => {
-    const on = !!size && tr.dataset.size === size;
+    const on = !!row && tr.dataset.size === size;
     tr.classList.toggle('is-on', on);
     // aria-current is what tells a screen reader which row is the answer;
     // the highlight alone says it only to people who can see it.
@@ -599,13 +734,43 @@ function refreshSizeGuide() {
     else tr.removeAttribute('aria-current');
   });
 
+  // The readout says what was chosen even while another tab is being read,
+  // which is the one thing the highlighted row cannot do. The cut is named
+  // beside it only when the size does not already say it: "M" needs telling
+  // apart from a kids size, "Kids 16" plainly does not.
+  const chosenFit = fitOfSize(size);
+  const saysFit = chosenFit &&
+    size.toLowerCase().startsWith(chosenFit.label.toLowerCase());
+  const out = $('sg-chosen');
+  if (out) {
+    out.innerHTML = chosenFit
+      ? `<span class="sg-chosen-size">${esc(size)}</span>${saysFit ? '' :
+         `<span class="sg-chosen-fit">${esc(chosenFit.label)}</span>`}`
+      : '<span class="sg-chosen-none">No size chosen yet</span>';
+  }
+  guide.classList.toggle('is-answered', !!chosenFit);
+
   // Inches get a ditto mark; anything else is spelled out in the caption and
   // left off the bracket, where there is no room to explain it.
-  const unit = chart.units === 'inches' ? '&Prime;' : '';
-  const bracket = (el, n) => { if (el) el.innerHTML = n == null ? '&mdash;' : `${esc(n)}${unit}`; };
-  bracket($('sg-w'), m?.width);
-  bracket($('sg-l'), m?.length);
-  guide.classList.toggle('is-sized', !!m);
+  const unit = sizeField()?.sizeChart?.units === 'inches' ? '&Prime;' : '';
+  const bracket = (el, n) => {
+    if (el) el.innerHTML = n == null ? '&mdash;' : `${num(n)}${unit}`;
+  };
+  bracket($('sg-w'), row?.half);
+  bracket($('sg-l'), row?.length);
+
+  // The doubling is the step people miss, so the bracket shows its own
+  // arithmetic rather than a number that has already been through it.
+  const round = $('sg-w-round');
+  if (round) {
+    round.innerHTML = row?.chest == null ? '' : `&times;&nbsp;2 = ${num(row.chest)}${unit}`;
+  }
+
+  // A cut with no body length has no bracket for one: an empty measurement
+  // hanging off the drawing reads as a figure that failed to load.
+  const charts = (key) => !!fit?.columns.some((c) => c.key === key);
+  guide.querySelector('.sg-length')?.toggleAttribute('hidden', !charts('length'));
+  guide.classList.toggle('is-sized', !!row);
 
   const cat = (v.race_category || '').trim();
   const j = JERSEYS[cat];
@@ -1004,7 +1169,15 @@ function renderField(f) {
         </fieldset>
       </div>`;
     }
-    const opts = f.options.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+    // Grouped when the schema says so — twenty-one shirt sizes in one flat
+    // list is a scroll with nothing to steer by, and the browser's own
+    // <optgroup> headings cost nothing and work in every picker, including
+    // the full-screen wheel a phone puts up.
+    const opt = (o) => `<option value="${esc(o)}">${esc(o)}</option>`;
+    const opts = f.optionGroups?.length
+      ? f.optionGroups.map((g) =>
+          `<optgroup label="${esc(g.label)}">${g.options.map(opt).join('')}</optgroup>`).join('')
+      : f.options.map(opt).join('');
     return field(f, id, star, help, describedBy,
       `<select name="${esc(f.name)}" id="${id}" aria-describedby="${esc(describedBy)}">
          <option value="">Choose an option</option>${opts}

@@ -28,6 +28,10 @@ export default function handler(req, res) {
       required: f.required,
       help: f.help,
       options: f.options,
+      // The same options cut into labelled groups, when a flat menu of them
+      // would be too long to find anything in. The page falls back to
+      // `options` when a question has none.
+      optionGroups: f.optionGroups,
       maxLength: f.maxLength,
       section: f.section,
       // Where the question is drawn (main flow, or a named pop-up panel)
@@ -39,9 +43,10 @@ export default function handler(req, res) {
       // the server checks the same rule again regardless.
       pattern: f.pattern,
       patternMessage: f.patternMessage,
-      // The measurements behind the shirt size guide. Nothing on the server
-      // reads them; they travel with the options they describe so the page
-      // cannot end up charting a different set of sizes than it offers.
+      // The measurements behind the shirt size guide, and the cuts they are
+      // grouped into. Nothing on the server reads them; they travel with the
+      // options they describe so the page cannot end up charting a different
+      // set of sizes than it offers.
       sizeChart: f.sizeChart,
     })),
   });

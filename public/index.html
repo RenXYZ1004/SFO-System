@@ -450,44 +450,84 @@ We run because every step can make a difference.
     <template id="tpl-shirt-guide">
       <div class="size-guide">
 
-        <!-- What the two words on the chart actually mean. People read "width"
-             as "chest measurement" and order a size too big; brackets drawn
-             against the garment are the cheapest way to say "flat, and half
-             way round". -->
-        <div class="sg-diagram">
-          <div class="sg-width">
-            <span class="sg-dim">Width <b id="sg-w">—</b></span>
-            <span class="sg-bar sg-bar-x" aria-hidden="true"></span>
+        <!-- The shirt is made in two cuts, and a kids 14 and a unisex 5XS are
+             the same 28" chest in different garments. Showing both ladders at
+             once would invite exactly that confusion, so the guide shows one
+             cut at a time and the tabs say which. app.js builds them from the
+             schema, so a third cut would need nothing here. -->
+        <div class="sg-top">
+          <div class="sg-top-text">
+            <p class="sg-eyebrow">Size guide</p>
+            <p class="sg-chosen" id="sg-chosen">
+              <span class="sg-chosen-none">No size chosen yet</span>
+            </p>
+          </div>
+          <div class="sg-fits" id="sg-fits" role="tablist" aria-label="Shirt fit"></div>
+        </div>
+
+        <div class="sg-panel" id="sg-panel" role="tabpanel" tabindex="0">
+          <p class="sg-fit-note" id="sg-fit-note"></p>
+
+          <!-- What the words on the chart actually mean. People read the flat
+               measurement as a chest size and order two sizes small; brackets
+               drawn against the garment, with the doubling shown rather than
+               done in advance, are the cheapest way to say "flat, and half
+               way round". -->
+          <div class="sg-diagram">
+            <div class="sg-width">
+              <span class="sg-dim">
+                Half chest <b id="sg-w">—</b>
+                <i class="sg-round" id="sg-w-round"></i>
+              </span>
+              <span class="sg-bar sg-bar-x" aria-hidden="true"></span>
+            </div>
+
+            <div class="sg-art">
+              <img id="sg-shirt" alt="" hidden>
+              <svg class="sg-ghost" viewBox="0 0 100 110" aria-hidden="true" fill="none"
+                   stroke="currentColor" stroke-width="3" stroke-linejoin="round">
+                <path d="M50 9 30 15 8 27l8 20 12-5v58h44V42l12 5 8-20-22-12z"/>
+                <path d="M38 12q12 14 24 0"/>
+              </svg>
+            </div>
+
+            <!-- Hidden by app.js on a cut the supplier charts no body length
+                 for: an empty bracket reads as a figure that failed to load. -->
+            <div class="sg-length">
+              <span class="sg-bar sg-bar-y" aria-hidden="true"></span>
+              <span class="sg-dim">Length <b id="sg-l">—</b></span>
+            </div>
           </div>
 
-          <div class="sg-art">
-            <img id="sg-shirt" alt="" hidden>
-            <svg class="sg-ghost" viewBox="0 0 100 110" aria-hidden="true" fill="none"
-                 stroke="currentColor" stroke-width="3" stroke-linejoin="round">
-              <path d="M50 9 30 15 8 27l8 20 12-5v58h44V42l12 5 8-20-22-12z"/>
-              <path d="M38 12q12 14 24 0"/>
+          <div class="sg-table-wrap">
+            <table class="sg-table">
+              <caption id="sg-caption"></caption>
+              <!-- Both filled from the schema: the sizes on offer and the
+                   measurements charted for them come from the same place. -->
+              <thead id="sg-head"></thead>
+              <tbody id="sg-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Closed by default. It answers a question most people do not have,
+             and the ones who do have it are the ones about to measure a shirt
+             on a table — they will open it. -->
+        <details class="sg-how">
+          <summary>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 8.5h18v7H3zM7 8.5v3M11 8.5v4.5M15 8.5v3M19 8.5v4.5"/>
             </svg>
-          </div>
-
-          <div class="sg-length">
-            <span class="sg-bar sg-bar-y" aria-hidden="true"></span>
-            <span class="sg-dim">Length <b id="sg-l">—</b></span>
-          </div>
-        </div>
-
-        <div class="sg-table-wrap">
-          <table class="sg-table">
-            <caption id="sg-caption">Measurements in inches, garment laid flat</caption>
-            <!-- Both filled from the schema: the sizes on offer and the
-                 measurements charted for them come from the same place. -->
-            <thead id="sg-head"></thead>
-            <tbody id="sg-rows"></tbody>
-          </table>
-        </div>
+            How to measure a shirt you already own
+          </summary>
+          <dl class="sg-how-list" id="sg-how-list"></dl>
+          <p class="sg-how-note" id="sg-how-note"></p>
+        </details>
 
         <p class="size-guide-note">
-          Race shirts are unisex. Check the measurements against a shirt you
-          already own before choosing — sizes cannot be swapped on race day.
+          Measure a shirt that already fits you rather than guessing —
+          sizes cannot be swapped on race day.
         </p>
         <!-- Unhidden by app.js once a race category is chosen: which shirt you
              are being measured for is decided by the distance, not by this

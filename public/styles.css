@@ -1012,10 +1012,13 @@ a:hover{text-decoration:underline}
 }
 .jersey-drag span{margin-right:5px;font-size:14px}
 
-/* Under the size chart: the way back to the shirt this size is measured for. */
-.size-jersey{display:inline-flex;align-items:center;gap:6px;margin:11px auto 0;font-weight:700}
-.size-guide{text-align:center}
-.size-guide .size-guide-note{text-align:center}
+/* Under the size chart: the way back to the shirt this size is measured for.
+   Its own strip at the foot of the guide, so it reads as a way out rather
+   than as one more thing in the chart. */
+.size-jersey{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:calc(100% - 26px);margin:0 13px 13px;font-weight:700;
+}
 
 @media (prefers-color-scheme:dark){
   .j-floor{background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0) 76%)}
@@ -1031,10 +1034,84 @@ a:hover{text-decoration:underline}
 /* ============================================================
    Shirt size guide (inside the shirt-size question)
    ============================================================ */
+
+/* Recessed rather than raised: it sits inside a question on a white card, and
+   another card on top of that card would read as a second thing to answer. */
 .size-guide{
-  margin:14px 0 2px;padding:15px 13px 13px;
-  border:1px solid var(--line);border-radius:12px;background:var(--bg);
-  text-align:center;
+  margin:14px 0 2px;
+  border:1px solid var(--line);border-radius:13px;background:var(--bg);
+  overflow:hidden;
+}
+
+/* ---------- the header: what was chosen, and which cut is on screen ------- */
+
+.sg-top{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;
+  padding:12px 13px;border-bottom:1px solid var(--line);background:var(--card);
+}
+.sg-top-text{min-width:0}
+.sg-eyebrow{
+  margin:0;font-size:10.5px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted);
+}
+/* The answer, kept legible from the top of the question — the highlighted row
+   says the same thing, but only while the tab it lives on is the one showing. */
+.sg-chosen{margin:2px 0 0;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.sg-chosen-size{font-size:16px;font-weight:800;color:var(--accent);letter-spacing:-.01em}
+.sg-chosen-fit{
+  font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);
+}
+.sg-chosen-none{font-size:14px;color:var(--muted)}
+
+/* The cut tabs. Same segmented pill as the jersey's front/back switch, because
+   it is the same gesture — two views of one thing, not two questions. */
+.sg-fits{
+  display:inline-flex;gap:3px;padding:3px;
+  border:1px solid var(--line);border-radius:99px;background:var(--bg);
+}
+.sg-fit{
+  appearance:none;border:0;background:transparent;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:5px 15px;border-radius:99px;color:var(--ink-2);
+  transition:background .18s,color .18s;
+}
+.sg-fit-name{font:800 13px var(--font);letter-spacing:.01em}
+.sg-fit-sub{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.72}
+.sg-fit:hover{color:var(--accent)}
+.sg-fit.is-on{background:var(--accent);color:var(--accent-ink)}
+.sg-fit.is-on .sg-fit-sub{opacity:.8}
+.sg-fit:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-ring)}
+
+/* ---------- the panel ---------- */
+
+.sg-panel{padding:13px 13px 14px}
+.sg-panel:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--accent-ring)}
+.sg-fit-note{
+  margin:0 0 13px;font-size:12.5px;line-height:1.5;color:var(--ink-2);text-align:center;
+}
+
+/* Past the breakpoint the drawing and the chart stop queueing: the shirt is a
+   fixed 148px either way, so the space a wide screen has spare is exactly the
+   space the chart wants. */
+@media (min-width:620px){
+  /* Capped and centred as a pair rather than spread across whatever width is
+     going: a chart floating half a card away from the drawing it explains
+     stops looking like one figure. */
+  .sg-panel{
+    display:grid;grid-template-columns:auto 300px;
+    justify-content:center;align-items:start;gap:6px 26px;
+  }
+  .sg-fit-note{grid-column:1/-1;margin-bottom:6px}
+  /* The drawing is a fixed height and the chart is fourteen rows of it, so
+     the column would otherwise end in a hole the size of the shirt. Centred,
+     the two read as a figure beside a table. */
+  .sg-diagram{margin-bottom:0;align-self:center}
+  /* Fills its column instead of sitting in the middle of it. Left to find its
+     own width the chart comes out around 170px, and a narrow table adrift in
+     a wide track reads as two things that failed to line up. */
+  .sg-table-wrap{max-width:none;margin:2px 0 0}
 }
 
 /* ---------- the diagram ---------- */
@@ -1067,15 +1144,23 @@ a:hover{text-decoration:underline}
 }
 .sg-dim{
   font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-  color:var(--muted);white-space:nowrap;
+  color:var(--muted);white-space:nowrap;text-align:center;
 }
 .sg-dim b{color:var(--ink);font-size:13px;letter-spacing:0}
+/* The doubling, shown rather than done in advance. It is the step that gets
+   skipped, and a chest measurement is the number people actually know. */
+.sg-round{
+  display:block;font-style:normal;font-size:10.5px;font-weight:700;
+  letter-spacing:.02em;color:var(--accent);text-transform:none;
+}
+.sg-round:empty{display:none}
 /* Nothing is claimed about a size nobody has chosen: the figures show a dash
    and the brackets step back until there is a measurement to point at. */
 .size-guide:not(.is-sized) .sg-bar{opacity:.45}
 
 /* The brackets themselves: a rule with a tick at each end. Inset on the
-   horizontal one because "width" is across the body, not sleeve to sleeve. */
+   horizontal one because the chest is measured across the body, not sleeve
+   to sleeve. */
 .sg-bar{position:relative;display:block;background:var(--line-2)}
 .sg-bar-x{height:2px;margin:0 22%}
 .sg-bar-y{width:2px;height:100%;margin:2px 0}
@@ -1089,37 +1174,102 @@ a:hover{text-decoration:underline}
 
 /* ---------- the chart ---------- */
 
-/* Three columns rather than nine: on a phone "find your size, read across"
-   fits without scrolling sideways, and the chosen row is a whole line the
-   eye can land on. */
-.sg-table-wrap{max-width:340px;margin:0 auto;overflow-x:auto}
-.sg-table{width:100%;border-collapse:collapse;font-size:13.5px}
+/* Three columns rather than one long ladder of every size the supplier makes:
+   the tabs have already halved it, so on a phone "find your size, read across"
+   fits without scrolling sideways, and the chosen row is a whole line the eye
+   can land on. */
+.sg-table-wrap{max-width:360px;margin:0 auto;overflow-x:auto}
+/* Separated rather than collapsed, with the spacing taken back out: a
+   collapsed table discards border-radius on its cells, and the rounded ends
+   are what make the highlighted row read as one pill rather than a band
+   running off both edges of the chart. */
+.sg-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
 /* Sentence case rather than the small-caps used elsewhere for labels: this
    one is a sentence, and setting it in caps wrapped it onto two lines on a
    phone to say the same thing. */
 .sg-table caption{
   caption-side:top;padding:0 0 9px;
-  font-size:12px;color:var(--muted);
+  font-size:12px;line-height:1.45;color:var(--muted);text-align:center;
 }
 .sg-table th,.sg-table td{
-  padding:5px 10px;text-align:center;border-bottom:1px solid var(--line);
+  padding:0 10px;height:34px;text-align:center;border-bottom:1px solid var(--line);
 }
 .sg-table thead th{
+  height:auto;padding-bottom:6px;
   font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
   color:var(--muted);border-bottom-color:var(--line-2);
 }
-.sg-table tbody th{font-weight:800;color:var(--ink)}
 .sg-table tbody td{color:var(--ink-2);font-variant-numeric:tabular-nums}
 .sg-table tbody tr:last-child th,.sg-table tbody tr:last-child td{border-bottom:0}
-.sg-table tbody tr.is-on{background:var(--accent-soft)}
-.sg-table tbody tr.is-on th,.sg-table tbody tr.is-on td{color:var(--accent);font-weight:800}
-/* First and last cell carry the rounding, so the highlight reads as one pill
-   across the row rather than a full-bleed band. */
-.sg-table tbody tr.is-on th{border-radius:7px 0 0 7px}
-.sg-table tbody tr.is-on td:last-child{border-radius:0 7px 7px 0}
+/* A measurement the supplier's chart does not give. Set back, so an absent
+   figure reads as absent rather than as a number that failed to arrive. */
+.sg-none{color:var(--line-2)}
+
+/* Reading the chart and answering the question are one movement: the row is
+   the control. The button carries the semantics — a screen reader hears
+   "M, button" in the row it belongs to — and stretches over the whole row so
+   a thumb has the full width to land on. */
+.sg-table tbody tr{position:relative}
+.sg-table tbody tr>*{transition:background .13s,color .13s}
+.sg-pick{
+  appearance:none;border:0;background:transparent;cursor:pointer;
+  padding:0;width:100%;height:34px;
+  font:800 13.5px var(--font);color:var(--ink);
+}
+.sg-pick::after{content:"";position:absolute;inset:0;border-radius:7px}
+.sg-pick:focus-visible{outline:none}
+.sg-pick:focus-visible::after{box-shadow:0 0 0 2px var(--accent-ring)}
+
+/* The tint goes on the cells, not the row: the first and last cell carry the
+   rounding, so the highlight reads as one pill across the row rather than a
+   band running off both edges of the chart. */
+.sg-table tbody tr:hover>*,.sg-table tbody tr.is-on>*{background:var(--accent-soft)}
+.sg-table tbody tr:hover>:first-child,.sg-table tbody tr.is-on>:first-child{
+  border-radius:7px 0 0 7px;
+}
+.sg-table tbody tr:hover>:last-child,.sg-table tbody tr.is-on>:last-child{
+  border-radius:0 7px 7px 0;
+}
+.sg-table tbody tr:hover .sg-pick{color:var(--accent)}
+.sg-table tbody tr.is-on .sg-pick,.sg-table tbody tr.is-on td{color:var(--accent);font-weight:800}
+
+/* ---------- how to measure ---------- */
+
+/* The supplier's own instructions, folded away. They answer a question most
+   people do not have; the ones who do are standing over a shirt on a table
+   and will open it. */
+.sg-how{border-top:1px solid var(--line);background:var(--card)}
+.sg-how summary{
+  display:flex;align-items:center;gap:8px;
+  padding:11px 13px;cursor:pointer;list-style:none;
+  font-size:12.5px;font-weight:700;color:var(--ink-2);
+}
+.sg-how summary::-webkit-details-marker{display:none}
+.sg-how summary::after{
+  content:"";margin-left:auto;width:7px;height:7px;
+  border:2px solid currentColor;border-width:0 2px 2px 0;
+  transform:rotate(45deg) translate(-2px,-2px);opacity:.6;transition:transform .18s;
+}
+.sg-how[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.sg-how summary:hover{color:var(--accent)}
+.sg-how summary:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--accent-ring)}
+.sg-how summary svg{flex:none;opacity:.7}
+.sg-how-list{margin:0;padding:0 13px 2px}
+.sg-how-row{margin:0 0 10px}
+.sg-how-row dt{
+  font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 2px;
+}
+.sg-how-row dd{margin:0;font-size:12.5px;line-height:1.55;color:var(--ink-2)}
+.sg-how-note{
+  margin:0;padding:0 13px 13px;
+  font-size:11.5px;line-height:1.5;color:var(--muted);
+}
 
 .size-guide-note{
-  margin:13px 0 0;font-size:12.5px;color:var(--muted);line-height:1.55;
+  margin:0;padding:11px 13px;
+  border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--muted);line-height:1.55;text-align:center;
 }
 
 /* This one question already costs a phone most of a screen, and it is the one
@@ -1128,6 +1278,10 @@ a:hover{text-decoration:underline}
 @media (max-width:430px){
   .sg-diagram{grid-template-columns:126px auto;grid-template-rows:auto 162px}
   .sg-art{width:126px;height:162px}
+  /* Two cuts side by side, each filling half: at this width the pill would
+     otherwise wrap under its own heading and read as a stray control. */
+  .sg-fits{display:flex;width:100%}
+  .sg-fit{flex:1}
 }
 
 /* ============================================================
