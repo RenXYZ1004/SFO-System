@@ -153,6 +153,14 @@ panel: 'salary-deduction',                                // drawn in the pop-up
 showIf: { field: 'payment_method', equals: 'Employee' },  // only asked of employees
 ```
 
+The proof-of-payment upload is normalised before it reaches Vercel Blob:
+JPG/PNG/WEBP images are resized to a maximum 1400px edge and encoded as
+lossy WebP, stepping through quality levels until the result is around 700 KB
+or the smallest acceptable encoding is reached. This strips camera metadata
+and keeps the Blob copy compact. PDFs are left as PDFs. The server accepts
+only a verified WebP image or PDF, so an image cannot bypass the compression
+step by posting directly to the upload endpoint.
+
 The proof-of-payment question carries the mirror image of that rule, so a
 payroll deduction never asks for a receipt that does not exist:
 

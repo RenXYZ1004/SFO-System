@@ -1196,12 +1196,12 @@ function renderField(f) {
     return field(f, id, star, help, describedBy, `
       <input type="hidden" name="${esc(f.name)}" id="${id}" value="">
       <input type="file" id="${id}_picker" class="file-input"
-             accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+             accept="image/jpeg,image/png,image/webp,application/pdf"
              aria-describedby="${esc(describedBy)}">
       <label class="drop" for="${id}_picker" data-drop="${esc(f.name)}">
         <span class="drop-icon" aria-hidden="true">&#8679;</span>
         <span class="drop-main">Choose a file or drag it here</span>
-        <span class="drop-sub">JPG, PNG, WEBP, HEIC or PDF · up to 4&nbsp;MB</span>
+        <span class="drop-sub">JPG, PNG, WEBP or PDF · up to 4&nbsp;MB</span>
       </label>
       <div class="upload" id="${id}_state" hidden>
         <div class="upload-row">
@@ -1456,24 +1456,49 @@ function resetUploads() {
  * cannot be decoded, or is not an image.
  */
 async function downscale(file) {
-  if (!file.type.startsWith('image/') || file.type === 'image/heic' || file.type === 'image/heif') {
-    return file;
-  }
-  if (file.size < 900 * 1024) return file;
+  // Payment receipts are deliberately normalised in the browser before they
+  // ever reach Blob. Canvas/WebP strips camera metadata and gives us a much
+  // smaller, predictable image while keeping the receipt readable.
+  if (!file.type.startsWith('image/')) return file;
+
   try {
     const bmp = await createImageBitmap(file);
-    const max = 1600;
+    const max = 1400;
     const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
-    const w = Math.round(bmp.width * scale);
-    const h = Math.round(bmp.height * scale);
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
     const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.drawImage(bmp, 0, 0, w, h);
     bmp.close?.();
-    const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.82));
-    if (!blob || blob.size >= file.size) return file;
-    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+
+    // Prefer a very small receipt, but step down quality gradually so text and
+    // QR/barcode details remain usable. The smallest successful result wins.
+    const qualities = [0.62, 0.52, 0.42, 0.34];
+    const target = 700 * 1024;
+    let best = null;
+
+    for (const quality of qualities) {
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, 'image/webp', quality)
+      );
+      if (!blob) continue;
+      if (!best || blob.size < best.size) best = blob;
+      if (blob.size <= target) break;
+    }
+
+    if (!best) throw new Error('WebP encoding is unavailable');
+
+    return new File(
+      [best],
+      file.name.replace(/\.[^.]+$/, '') + '.webp',
+      { type: 'image/webp', lastModified: Date.now() }
+    );
   } catch {
+    // If the browser cannot decode/encode this image (notably some HEIC
+    // variants), leave it untouched so the server can give a clear error.
     return file;
   }
 }
@@ -1529,6 +1554,14 @@ function wireUpload(f) {
 
     const sending = await downscale(file);
 
+    if (sending.type.startsWith('image/') && sending.type !== 'image/webp') {
+      status.textContent = 'This image could not be converted to WebP. Please use JPG, PNG or WEBP.';
+      status.className = 'upload-status bad';
+      bar.style.width = '0%';
+      setFieldState(f.name, 'Please use a JPG, PNG or WEBP image.', '');
+      return;
+    }
+
     if (sending.type.startsWith('image/')) {
       objectUrl = URL.createObjectURL(sending);
       thumb.style.backgroundImage = `url(${objectUrl})`;
@@ -1565,7 +1598,7 @@ function wireUpload(f) {
 
       hidden.value = data.url;
       bar.style.width = '100%';
-      status.textContent = `Uploaded · ${kb(data.size ?? sending.size)}`;
+      status.textContent = `Uploaded · ${kb(data.size ?? sending.size)} WebP`;
       status.className = 'upload-status good';
       setFieldState(f.name, '', data.url);
       updateProgress();

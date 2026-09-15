@@ -6,7 +6,7 @@ import { blobToken, blobConfigured, blobTokenCandidates } from '../lib/blob-toke
  * Returns the public URL, which the browser then submits as an ordinary
  * text answer on the Google Form — so the Sheet gets a clickable link.
  *
- * The browser sends raw bytes (not multipart) so no parser is needed:
+ * The browser sends raw bytes (not multipart) so no parser is needed. Images have already been normalised to compact WebP in the browser:
  *   POST /api/blob-upload
  *   content-type: image/jpeg
  *   x-filename:   receipt.jpg
@@ -15,16 +15,14 @@ import { blobToken, blobConfigured, blobTokenCandidates } from '../lib/blob-toke
  * Blob store is connected to the project.
  */
 
-// Vercel caps a serverless request body at 4.5 MB. Images are downscaled in
-// the browser before they get here; this is the backstop.
+// Vercel caps a serverless request body at 4.5 MB. Images are converted to
+// compact WebP and downscaled in the browser before they get here; this is the backstop.
 const MAX_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
+  // Images arrive as WebP after browser-side normalisation. PDFs are kept as
+  // PDFs because converting them to an image would destroy selectable text.
   'image/webp': 'webp',
-  'image/heic': 'heic',
-  'image/heif': 'heif',
   'application/pdf': 'pdf',
 };
 
@@ -42,8 +40,6 @@ function sniff(buf) {
   // RIFF....WEBP
   if (buf.length > 12 && buf.subarray(0, 4).toString('latin1') === 'RIFF'
       && buf.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp';
-  // ....ftypheic / ftypheix / ftypmif1
-  if (buf.length > 12 && buf.subarray(4, 8).toString('latin1') === 'ftyp') return 'heic';
   return null;
 }
 
@@ -132,7 +128,7 @@ export default async function handler(req, res) {
   if (!ALLOWED[contentType]) {
     return res.status(415).json({
       ok: false,
-      error: 'Please upload a JPG, PNG, WEBP, HEIC or PDF file.',
+      error: 'Please upload a JPG, PNG, WEBP or PDF file.',
     });
   }
 
@@ -154,9 +150,7 @@ export default async function handler(req, res) {
   // The declared type must match what the bytes actually are.
   const actual = sniff(buf);
   const declared = ALLOWED[contentType];
-  const matches = actual === declared
-    || (declared === 'heif' && actual === 'heic')
-    || (declared === 'jpg' && actual === 'jpg');
+  const matches = actual === declared;
   if (!actual || !matches) {
     return res.status(415).json({
       ok: false,

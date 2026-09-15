@@ -280,7 +280,7 @@ function showDetail(r) {
   if (!r.sheet_synced) flags.push(`Not written to the Google Sheet${r.sheet_error ? ` — ${esc(r.sheet_error)}` : ''}.`);
 
   const kind = isEmployee(r)
-    ? '<p class="detail-kind emp">SISC employee · paying by salary deduction' +
+    ? '<p class="detail-kind emp">SGEN employee · paying by salary deduction' +
       (r.proof_url ? '' : ' <span class="detail-kind-note">— no receipt collected</span>') +
       '</p>'
     : '<p class="detail-kind pub">Non-employee · paying by bank transfer</p>';
