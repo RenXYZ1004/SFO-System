@@ -91,7 +91,8 @@ export default async function handler(req, res) {
       contentType,
     });
   } catch (err) {
-    console.error('[drive-upload] upload failed:', err.message);
+    console.error('[drive-upload] upload failed:', err?.message || err);
+    if (err?.stack) console.error(err.stack);
     return res.status(500).json({ ok: false, error: 'Could not store the file in Google Drive. Please try again.' });
   }
 }

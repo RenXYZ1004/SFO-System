@@ -40,7 +40,7 @@ const REDIRECT = `http://localhost:${PORT}/oauth2callback`;
 const SCOPE = [
   'https://mail.google.com/',
   'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive',
 ].join(' ');
 
 const rl = createInterface({ input: stdin, output: stdout });
