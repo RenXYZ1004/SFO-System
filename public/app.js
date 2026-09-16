@@ -1600,12 +1600,16 @@ function wireUpload(f) {
         setFieldState(f.name, data.error || 'Upload failed. Please try again.', '');
         return;
       }
-
-      // UPDATED UPLOAD HANDLER: Converts the Drive ID into a valid URL for the backend
-      const uploadedId = data.url || data.id || data.fileId || data.file_id || '';
-      const finalUrl = uploadedId.startsWith('http') 
-        ? uploadedId 
-        : `https://drive.google.com/file/d/${uploadedId}/view?usp=sharing`;
+      const rawResponse = data.url || data.id || data.fileId || data.file_id || '';
+      
+      // Extract ONLY the Drive ID, stripping away the "/api/receipt?id=" part if it exists
+      const idMatch = rawResponse.match(/id=([a-zA-Z0-9_-]+)/);
+      const cleanId = idMatch ? idMatch[1] : rawResponse;
+      
+      // Build the final, clean Drive URL
+      const finalUrl = cleanId.startsWith('http') 
+        ? cleanId 
+        : `https://drive.google.com/file/d/${cleanId}/view?usp=sharing`;
 
       hidden.value = finalUrl;
       bar.style.width = '100%';
