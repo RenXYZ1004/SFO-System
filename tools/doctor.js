@@ -108,24 +108,24 @@ if (!dbConfigured()) {
   }
 }
 
-/* ---------- 4. Vercel Blob (proof-of-payment uploads) ---------- */
+/* ---------- 4. Google Drive (proof-of-payment uploads) ---------- */
 
-const needsBlob = FORM.fields.some((f) => f.type === 'file');
-if (!needsBlob) {
-  add('Blob storage', OK, 'no file-upload field, so none needed');
-} else if (!(await import('../lib/blob-token.js')).blobConfigured()) {
-  add('Blob storage', BAD, 'BLOB_READ_WRITE_TOKEN is not set',
-    'Vercel dashboard -> Storage -> Create -> Blob -> connect to this project,\n' +
-    '     then copy the token into .env.local for local runs.');
+const needsDrive = FORM.fields.some((f) => f.type === 'file');
+if (!needsDrive) {
+  add('Google Drive', OK, 'no file-upload field, so none needed');
 } else {
   try {
-    const { list } = await import('@vercel/blob');
-    const { blobToken } = await import('../lib/blob-token.js');
-    const out = await list({ limit: 1, token: blobToken() });
-    add('Blob storage', OK, `store reachable (${out.blobs.length ? 'has files' : 'empty'})`);
+    const { driveConfigured, checkDrive } = await import('../lib/google-drive.js');
+    if (!driveConfigured()) {
+      add('Google Drive', BAD, 'Google Drive OAuth or GOOGLE_DRIVE_FOLDER_ID is not set',
+        'Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN and GOOGLE_DRIVE_FOLDER_ID, then run "npm run token" again if the Drive scope was newly added.');
+    } else {
+      const folder = await checkDrive();
+      add('Google Drive', OK, `folder reachable — ${folder.name}`);
+    }
   } catch (err) {
-    add('Blob storage', BAD, `token set but the store rejected it: ${err.message}`,
-      'Check the token belongs to a store connected to this project.');
+    add('Google Drive', BAD, `Drive check failed: ${err.message}`,
+      'Confirm the OAuth account has access to the configured Drive folder and that the Drive API is enabled.');
   }
 }
 

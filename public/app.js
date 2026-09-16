@@ -1581,7 +1581,7 @@ function wireUpload(f) {
     bar.style.width = '35%';
 
     try {
-      const res = await fetch('/api/blob-upload', {
+      const res = await fetch('/api/drive-upload', {
         method: 'POST',
         headers: { 'Content-Type': sending.type, 'X-Filename': sending.name },
         body: sending,

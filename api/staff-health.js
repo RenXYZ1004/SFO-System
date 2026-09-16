@@ -36,10 +36,20 @@ export default async function handler(req, res) {
     SITE_URL: present('SITE_URL'),
   };
 
-  const { blobConfigured, blobTokenCandidates } = await import('../lib/blob-token.js');
-  env.BLOB_TOKEN = blobConfigured();
+  const { driveConfigured, checkDrive } = await import('../lib/google-drive.js');
+  env.GOOGLE_DRIVE_FOLDER_ID = present('GOOGLE_DRIVE_FOLDER_ID');
+  env.GOOGLE_DRIVE = driveConfigured();
 
-  const checks = { env, blobVarNames: blobTokenCandidates() };
+  const checks = { env };
+  try {
+    if (!driveConfigured()) checks.drive = { ok: false, error: 'Google Drive OAuth or folder ID is missing' };
+    else {
+      const folder = await checkDrive();
+      checks.drive = { ok: true, folder: folder.name };
+    }
+  } catch (err) {
+    checks.drive = { ok: false, error: err.message };
+  }
 
   // Live checks, each isolated so one failure does not hide the others.
   try {
@@ -88,6 +98,6 @@ export default async function handler(req, res) {
     deployedAt: process.env.VERCEL_DEPLOYMENT_ID ? undefined : 'local run',
   };
 
-  const allGood = checks.smtp?.ok && checks.sheet?.ok && checks.database?.ok && env.BLOB_TOKEN;
+  const allGood = checks.smtp?.ok && checks.sheet?.ok && checks.database?.ok && checks.drive?.ok;
   return res.status(200).json({ ok: true, healthy: Boolean(allGood), ...checks });
 }

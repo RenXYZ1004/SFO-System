@@ -2,7 +2,7 @@ import { FORM, validate, isActive, AGREEMENT, waiverState } from '../lib/form-sc
 import { appendRegistration } from '../lib/sheets.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
-import { deleteBlob } from './blob-upload.js'; // compatibility wrapper; storage is Google Drive
+import { deleteDriveFile } from './drive-upload.js';
 import { dbConfigured, saveRegistration, markSheetSynced, markEmailSent } from '../lib/db.js';
 import { afterResponse } from '../lib/after-response.js';
 
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
     // The receipt was uploaded before this point, so it is now orphaned.
     for (const f of FORM.fields) {
       if (f.type === 'file' && values[f.name]) {
-        const gone = await deleteBlob(values[f.name]);
+        const gone = await deleteDriveFile(values[f.name]);
         console.log(`[register] orphaned upload ${gone ? 'removed' : 'left behind'}: ${values[f.name]}`);
       }
     }

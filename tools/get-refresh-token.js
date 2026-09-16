@@ -7,8 +7,7 @@
  *
  * Google Cloud Console setup first:
  *   1. APIs & Services -> Library -> enable "Gmail API", "Google Sheets API" AND "Google Drive API".
- *   2. OAuth consent screen -> User type INTERNAL  (critical: "Testing"
- *      expires refresh tokens after 7 days).
+ *   2. OAuth consent screen -> User type INTERNAL when using Google Workspace (or publish the app for external use).
  *   3. Credentials -> Create OAuth client ID -> Web application.
  *      Authorised redirect URI:  http://localhost:5555/oauth2callback
  *   4. Copy the Client ID and Client secret from THAT SAME client and put
@@ -37,7 +36,7 @@ for (const file of ['.env.local', '.env']) {
 
 const PORT = 5555;
 const REDIRECT = `http://localhost:${PORT}/oauth2callback`;
-// Gmail + Sheets + Drive on one consent.
+// Gmail (to send) + Sheets (to append the mirror row) on one consent.
 const SCOPE = [
   'https://mail.google.com/',
   'https://www.googleapis.com/auth/spreadsheets',
@@ -82,8 +81,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(400, { 'Content-Type': 'text/html' })
        .end(`<h2>Authorisation failed</h2><p>${err || 'no code returned'}</p>`);
     console.error('\nAuthorisation failed:', err || 'no code returned');
-    server.close();
-    process.exit(1);
+    setTimeout(() => process.exit(1), 100);
   }
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -110,8 +108,7 @@ const server = http.createServer(async (req, res) => {
       console.error('\nNo refresh_token returned. Revoke prior access at');
       console.error('https://myaccount.google.com/permissions and run this again.');
     }
-    server.close();
-    process.exit(1);
+    setTimeout(() => process.exit(1), 100);
   }
 
   res.writeHead(200, { 'Content-Type': 'text/html' })
@@ -147,8 +144,7 @@ const server = http.createServer(async (req, res) => {
   console.log('\nReminder: if the OAuth consent screen is still in "Testing", this token');
   console.log('dies in 7 days. Set it to "Internal" to make it permanent.\n');
 
-  server.close();
-  process.exit(0);
+  setTimeout(() => process.exit(0), 100);
 });
 
 server.listen(PORT);
