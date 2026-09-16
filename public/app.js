@@ -1257,7 +1257,8 @@ function checkField(f, v, all) {
   if (f.type === 'file') {
     if (!value) return f.required ? 'Please upload your proof of payment' : '';
     console.log("THE VALUE IS:", value);
-    return /^https:\/\/.+$/.test(value) ? '' : 'The upload did not complete. Please try again';
+  // instead of checking the url return, it checks the acutal file name
+    return /^[a-zA-Z0-9_-]{15,}$/.test(value) ? '' : 'The upload did not complete. Please try again';
 
   }
   if (f.required && !value) return 'This question is required';
