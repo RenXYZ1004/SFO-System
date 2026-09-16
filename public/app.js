@@ -1256,7 +1256,9 @@ function checkField(f, v, all) {
   const value = (v || '').trim();
   if (f.type === 'file') {
     if (!value) return f.required ? 'Please upload your proof of payment' : '';
+    console.log("THE VALUE IS:", value);
     return /^https:\/\/.+$/.test(value) ? '' : 'The upload did not complete. Please try again';
+
   }
   if (f.required && !value) return 'This question is required';
   if (!value) return '';
