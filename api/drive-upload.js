@@ -1,4 +1,4 @@
-import { uploadToDrive, deleteDriveFile, driveConfigured } from '../lib/google-drive.js';
+import { uploadToDrive, deleteDriveFile, driveConfigured, checkDrive } from '../lib/google-drive.js';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const ALLOWED = { 'image/webp': 'webp', 'application/pdf': 'pdf' };
@@ -80,6 +80,9 @@ export default async function handler(req, res) {
   const stamp = new Date().toISOString().slice(0, 10);
   const filename = `${stamp}-${safeName(req.headers['x-filename'])}`;
   try {
+    // Verify the configured destination before attempting the upload. This
+    // distinguishes an OAuth/folder-permission problem from an upload problem.
+    await checkDrive();
     const file = await uploadToDrive({ buffer: buf, filename, contentType });
     console.log(`[drive-upload] stored ${file.name} (${buf.length} bytes) as ${file.id}`);
     return res.status(200).json({
@@ -91,9 +94,15 @@ export default async function handler(req, res) {
       contentType,
     });
   } catch (err) {
-    console.error('[drive-upload] upload failed:', err?.message || err);
+    const message = String(err?.message || err || 'Unknown Google Drive error');
+    console.error('[drive-upload] upload failed:', message);
     if (err?.stack) console.error(err.stack);
-    return res.status(500).json({ ok: false, error: 'Could not store the file in Google Drive. Please try again.' });
+    // Safe diagnostic: never include credentials/tokens, but expose Google's
+    // actual error to the browser so configuration failures are actionable.
+    return res.status(500).json({
+      ok: false,
+      error: `Could not store the file in Google Drive: ${message}`
+    });
   }
 }
 
