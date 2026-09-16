@@ -1254,13 +1254,15 @@ function values() {
 function checkField(f, v, all) {
   if (all && !isActive(f, all)) return '';
   const value = (v || '').trim();
+  
   if (f.type === 'file') {
+    // UPDATED FILE VALIDATION: Accepts IDs or full URLs, rejects empty/undefined strings
     if (!value || value === 'undefined' || value === 'null') {
       return f.required ? 'Please upload your proof of payment' : '';
     }
-    // Blob IDs and full URLs are both longer than 15 chars.
     return value.length > 15 ? '' : 'The upload did not complete. Please try again';
   }
+  
   if (f.required && !value) return 'This question is required';
   if (!value) return '';
   if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
@@ -1583,7 +1585,7 @@ function wireUpload(f) {
     status.textContent = `Uploading… ${kb(sending.size)}`;
     bar.style.width = '35%';
 
-try {
+    try {
       const res = await fetch('/api/drive-upload', {
         method: 'POST',
         headers: { 'Content-Type': sending.type, 'X-Filename': sending.name },
@@ -1599,14 +1601,17 @@ try {
         return;
       }
 
-      // NEW: Grab the value whether the backend calls it 'url', 'id', or 'fileId'
-      const finalValue = data.url || data.id || data.fileId || '';
-      
-      hidden.value = finalValue;
+      // UPDATED UPLOAD HANDLER: Converts the Drive ID into a valid URL for the backend
+      const uploadedId = data.url || data.id || data.fileId || data.file_id || '';
+      const finalUrl = uploadedId.startsWith('http') 
+        ? uploadedId 
+        : `https://drive.google.com/file/d/${uploadedId}/view?usp=sharing`;
+
+      hidden.value = finalUrl;
       bar.style.width = '100%';
       status.textContent = `Uploaded · ${kb(data.size ?? sending.size)} WebP`;
       status.className = 'upload-status good';
-      setFieldState(f.name, '', finalValue);
+      setFieldState(f.name, '', finalUrl);
       updateProgress();
     } catch {
       status.textContent = 'Network error. Please try again.';
