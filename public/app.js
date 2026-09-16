@@ -1255,11 +1255,11 @@ function checkField(f, v, all) {
   if (all && !isActive(f, all)) return '';
   const value = (v || '').trim();
   if (f.type === 'file') {
-    if (!value) return f.required ? 'Please upload your proof of payment' : '';
-    console.log("THE VALUE IS:", value);
-  // instead of checking the url return, it checks the acutal file name
-    return /^[a-zA-Z0-9_-]{15,}$/.test(value) ? '' : 'The upload did not complete. Please try again';
-
+    if (!value || value === 'undefined' || value === 'null') {
+      return f.required ? 'Please upload your proof of payment' : '';
+    }
+    // Blob IDs and full URLs are both longer than 15 chars.
+    return value.length > 15 ? '' : 'The upload did not complete. Please try again';
   }
   if (f.required && !value) return 'This question is required';
   if (!value) return '';
@@ -1583,7 +1583,7 @@ function wireUpload(f) {
     status.textContent = `Uploading… ${kb(sending.size)}`;
     bar.style.width = '35%';
 
-    try {
+try {
       const res = await fetch('/api/drive-upload', {
         method: 'POST',
         headers: { 'Content-Type': sending.type, 'X-Filename': sending.name },
@@ -1599,11 +1599,14 @@ function wireUpload(f) {
         return;
       }
 
-      hidden.value = data.url;
+      // NEW: Grab the value whether the backend calls it 'url', 'id', or 'fileId'
+      const finalValue = data.url || data.id || data.fileId || '';
+      
+      hidden.value = finalValue;
       bar.style.width = '100%';
       status.textContent = `Uploaded · ${kb(data.size ?? sending.size)} WebP`;
       status.className = 'upload-status good';
-      setFieldState(f.name, '', data.url);
+      setFieldState(f.name, '', finalValue);
       updateProgress();
     } catch {
       status.textContent = 'Network error. Please try again.';
