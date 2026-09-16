@@ -1,53 +1,31 @@
-import { get } from '@vercel/blob';
+import { getReceipt, driveConfigured } from '../lib/google-drive.js';
 import { requireStaff } from '../lib/staff-auth.js';
-import { blobToken, blobConfigured } from '../lib/blob-token.js';
 
-/**
- * Serves one proof-of-payment file to signed-in staff.
- *
- *   GET /api/receipt?p=proof-of-payment/2026-11-22/receipt-x9f2.png
- *
- * Receipts are stored with private access, so this route is the only way to
- * see one — a stray link in a spreadsheet is useless to anyone without a
- * staff session. The blob pathname is never trusted as a filesystem path; it
- * is passed straight to the Blob API, which only ever looks inside our store.
- */
-
+/** Serves one private Google Drive receipt to signed-in staff. */
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'GET only' });
   }
-  // Set before the guard: the 401 that turns a stranger away is a response
-  // like any other, and must not sit in a shared cache either.
   res.setHeader('Cache-Control', 'no-store, private');
-
   if (!requireStaff(req, res)) return;
+  if (!driveConfigured()) return res.status(503).json({ ok: false, error: 'File storage is not configured.' });
 
-  if (!blobConfigured()) {
-    return res.status(503).json({ ok: false, error: 'File storage is not configured.' });
-  }
-
-  const pathname = String(req.query?.p ?? '').trim();
-  if (!pathname || !pathname.startsWith('proof-of-payment/')) {
+  const fileId = String(req.query?.p ?? '').trim();
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(fileId)) {
     return res.status(400).json({ ok: false, error: 'Unknown receipt.' });
   }
 
   try {
-    const found = await get(pathname, { access: 'private', token: blobToken() });
+    const found = await getReceipt(fileId);
     if (!found) return res.status(404).json({ ok: false, error: 'That receipt no longer exists.' });
 
-    const type = found.blob?.contentType || 'application/octet-stream';
-    res.setHeader('Content-Type', type);
-    // Shown in the browser, never cached by a shared proxy.
+    res.setHeader('Content-Type', found.metadata?.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-
-    const buf = Buffer.from(await new Response(found.stream).arrayBuffer());
-    res.statusCode = 200;
-    return res.end(buf);
+    return new Response(found.stream).arrayBuffer().then((ab) => res.end(Buffer.from(ab)));
   } catch (err) {
-    console.error('[receipt] fetch failed:', err.message);
+    console.error('[receipt] Drive fetch failed:', err.message);
     return res.status(500).json({ ok: false, error: 'Could not load that receipt.' });
   }
 }

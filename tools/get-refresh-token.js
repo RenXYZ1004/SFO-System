@@ -6,7 +6,7 @@
  *   node tools/get-refresh-token.js
  *
  * Google Cloud Console setup first:
- *   1. APIs & Services -> Library -> enable "Gmail API" AND "Google Sheets API".
+ *   1. APIs & Services -> Library -> enable "Gmail API", "Google Sheets API" AND "Google Drive API".
  *   2. OAuth consent screen -> User type INTERNAL  (critical: "Testing"
  *      expires refresh tokens after 7 days).
  *   3. Credentials -> Create OAuth client ID -> Web application.
@@ -37,10 +37,11 @@ for (const file of ['.env.local', '.env']) {
 
 const PORT = 5555;
 const REDIRECT = `http://localhost:${PORT}/oauth2callback`;
-// Gmail (to send) + Sheets (to append the mirror row) on one consent.
+// Gmail + Sheets + Drive on one consent.
 const SCOPE = [
   'https://mail.google.com/',
   'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/drive.file',
 ].join(' ');
 
 const rl = createInterface({ input: stdin, output: stdout });

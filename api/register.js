@@ -2,7 +2,7 @@ import { FORM, validate, isActive, AGREEMENT, waiverState } from '../lib/form-sc
 import { appendRegistration } from '../lib/sheets.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
-import { deleteBlob } from './blob-upload.js';
+import { deleteBlob } from './blob-upload.js'; // compatibility wrapper; storage is Google Drive
 import { dbConfigured, saveRegistration, markSheetSynced, markEmailSent } from '../lib/db.js';
 import { afterResponse } from '../lib/after-response.js';
 

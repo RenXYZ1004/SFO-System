@@ -1,32 +1,16 @@
-import { put, del } from '@vercel/blob';
-import { blobToken, blobConfigured, blobTokenCandidates } from '../lib/blob-token.js';
+import { uploadReceipt, driveConfigured } from '../lib/google-drive.js';
 
 /**
- * Receives one proof-of-payment file and stores it in Vercel Blob.
- * Returns the public URL, which the browser then submits as an ordinary
- * text answer on the Google Form — so the Sheet gets a clickable link.
- *
- * The browser sends raw bytes (not multipart) so no parser is needed. Images have already been normalised to compact WebP in the browser:
- *   POST /api/blob-upload
- *   content-type: image/jpeg
- *   x-filename:   receipt.jpg
- *
- * Requires BLOB_READ_WRITE_TOKEN, which Vercel injects automatically once a
- * Blob store is connected to the project.
+ * Compatibility endpoint retained at /api/blob-upload so the browser does not
+ * need a second upload protocol. Storage is now Google Drive, not Vercel Blob.
+ * Images have already been normalised to WebP in the browser.
  */
-
-// Vercel caps a serverless request body at 4.5 MB. Images are converted to
-// compact WebP and downscaled in the browser before they get here; this is the backstop.
 const MAX_BYTES = 4 * 1024 * 1024;
-
 const ALLOWED = {
-  // Images arrive as WebP after browser-side normalisation. PDFs are kept as
-  // PDFs because converting them to an image would destroy selectable text.
   'image/webp': 'webp',
   'application/pdf': 'pdf',
 };
 
-// Magic numbers, so a renamed .exe cannot pose as a receipt.
 const SIGNATURES = [
   { ext: 'jpg', bytes: [0xff, 0xd8, 0xff] },
   { ext: 'png', bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
@@ -37,13 +21,11 @@ function sniff(buf) {
   for (const sig of SIGNATURES) {
     if (sig.bytes.every((b, i) => buf[i] === b)) return sig.ext;
   }
-  // RIFF....WEBP
   if (buf.length > 12 && buf.subarray(0, 4).toString('latin1') === 'RIFF'
       && buf.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp';
   return null;
 }
 
-/** Reads the raw request body whether the platform pre-parsed it or not. */
 async function readBody(req) {
   if (Buffer.isBuffer(req.body)) return req.body;
   if (typeof req.body === 'string') return Buffer.from(req.body, 'binary');
@@ -57,45 +39,29 @@ async function readBody(req) {
   return Buffer.concat(chunks);
 }
 
-/** Absolute link to the staff-only viewer for a stored receipt. */
-export function receiptUrl(req, pathname) {
-  const base =
-    process.env.SITE_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
-    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-    `http://${req.headers?.host || 'localhost:3000'}`;
-  return `${base.replace(/\/+$/, '')}/api/receipt?p=${encodeURIComponent(pathname)}`;
-}
+const safeName = (s) => String(s || 'receipt')
+  .replace(/[^a-zA-Z0-9._-]/g, '_')
+  .replace(/_{2,}/g, '_')
+  .slice(-80) || 'receipt';
 
-const safeName = (s) =>
-  String(s || 'receipt')
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/_{2,}/g, '_')
-    .slice(-60) || 'receipt';
-
-/**
- * This is the one route that takes a write from a stranger — registration is
- * open to the public, so it cannot sit behind a sign-in. The file itself is
- * already checked hard (size, declared type, and the bytes actually matching
- * that type); this only limits how often one address may do it, so a script
- * cannot fill the Blob store and the bill with 4 MB of valid JPEG.
- *
- * Per warm instance, like the staff login throttle: serverless gives every
- * instance its own memory, so this slows a naive flood rather than stopping a
- * distributed one. If uploads ever need a real limit, it belongs in front of
- * the function — a WAF rule or Vercel's own rate limiting — not here.
- */
 const UPLOADS_PER_HOUR = 12;
 const uploads = new Map();
-
 function uploadThrottled(ip) {
   const now = Date.now();
   const recent = (uploads.get(ip) || []).filter((t) => now - t < 60 * 60_000);
   recent.push(now);
   uploads.set(ip, recent);
-  // A warm instance should not grow a map forever on a busy day.
   if (uploads.size > 500) uploads.clear();
   return recent.length > UPLOADS_PER_HOUR;
+}
+
+export function receiptUrl(req, fileId) {
+  const base =
+    process.env.SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
+    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+    `http://${req.headers?.host || 'localhost:3000'}`;
+  return `${base.replace(/\/+$/, '')}/api/receipt?p=${encodeURIComponent(fileId)}`;
 }
 
 export default async function handler(req, res) {
@@ -103,136 +69,81 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'POST only' });
   }
-
   res.setHeader('Cache-Control', 'no-store');
 
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
   if (uploadThrottled(ip)) {
-    return res.status(429).json({
-      ok: false,
-      error: 'Too many uploads from this connection. Please wait a while and try again.',
-    });
+    return res.status(429).json({ ok: false, error: 'Too many uploads from this connection. Please wait a while and try again.' });
   }
 
-  if (!blobConfigured()) {
-    console.error('[blob-upload] no Vercel Blob token found. Env vars that look ' +
-      'blob-related: ' + (blobTokenCandidates().join(', ') || 'none') +
-      '. Connect a Blob store to this project, then redeploy.');
-    return res.status(503).json({
-      ok: false,
-      error: 'File uploads are not configured yet. Please contact the organisers.',
-    });
+  if (!driveConfigured()) {
+    return res.status(503).json({ ok: false, error: 'File uploads are not configured yet. Please contact the organisers.' });
   }
 
   const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
   if (!ALLOWED[contentType]) {
-    return res.status(415).json({
-      ok: false,
-      error: 'Please upload a JPG, PNG, WEBP or PDF file.',
-    });
+    return res.status(415).json({ ok: false, error: 'Please upload a JPG, PNG, WEBP or PDF file.' });
   }
 
   let buf;
   try {
     buf = await readBody(req);
   } catch (err) {
-    if (err.message === 'TOO_LARGE') {
-      return res.status(413).json({ ok: false, error: 'That file is too large. Please keep it under 4 MB.' });
-    }
+    if (err.message === 'TOO_LARGE') return res.status(413).json({ ok: false, error: 'That file is too large. Please keep it under 4 MB.' });
     return res.status(400).json({ ok: false, error: 'Could not read the uploaded file.' });
   }
-
   if (!buf.length) return res.status(400).json({ ok: false, error: 'The uploaded file was empty.' });
-  if (buf.length > MAX_BYTES) {
-    return res.status(413).json({ ok: false, error: 'That file is too large. Please keep it under 4 MB.' });
-  }
+  if (buf.length > MAX_BYTES) return res.status(413).json({ ok: false, error: 'That file is too large. Please keep it under 4 MB.' });
 
-  // The declared type must match what the bytes actually are.
   const actual = sniff(buf);
   const declared = ALLOWED[contentType];
-  const matches = actual === declared;
-  if (!actual || !matches) {
-    return res.status(415).json({
-      ok: false,
-      error: 'That file does not look like a valid image or PDF.',
-    });
+  if (!actual || actual !== declared) {
+    return res.status(415).json({ ok: false, error: 'That file does not look like a valid image or PDF.' });
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const pathname = `proof-of-payment/${stamp}/${safeName(req.headers['x-filename'])}`;
+  const original = safeName(req.headers['x-filename']);
+  const ext = contentType === 'image/webp' ? '.webp' : '.pdf';
+  const base = original.replace(/\.(webp|pdf|jpg|jpeg|png)$/i, '');
+  const filename = `proof-of-payment-${stamp}-${base}${ext}`;
 
   try {
-    const { blob, access } = await store(pathname, buf, contentType);
-    console.log(`[blob-upload] stored ${blob.pathname} (${buf.length} bytes, ${access})`);
+    const file = await uploadReceipt(buf, filename, contentType);
+    console.log(`[drive-upload] stored ${file.id} (${buf.length} bytes)`);
     return res.status(200).json({
       ok: true,
-      // A private store can only be read through the staff-authenticated
-      // route; a public store's own URL is fine and works from the Sheet.
-      url: access === 'private' ? receiptUrl(req, blob.pathname) : blob.url,
-      pathname: blob.pathname,
-      access,
+      url: receiptUrl(req, file.id),
+      fileId: file.id,
+      name: file.name,
       size: buf.length,
+      mimeType: file.mimeType || contentType,
     });
   } catch (err) {
-    console.error('[blob-upload] put failed:', err.message);
+    console.error('[drive-upload] upload failed:', err.message);
     return res.status(500).json({ ok: false, error: 'Could not store the file. Please try again.' });
   }
 }
 
-/**
- * Vercel Blob stores are created as either public or private and reject the
- * wrong one outright. Rather than hard-coding a mode that breaks whenever the
- * store is recreated, try the configured/last-known one and switch on the
- * mismatch error, remembering the answer for subsequent uploads.
- *
- * Set BLOB_ACCESS=public|private to skip the probe entirely.
- */
-let knownAccess = null;
-
-export function __resetAccessCache() { knownAccess = null; }
-
-async function store(pathname, buf, contentType) {
-  const opts = { contentType, addRandomSuffix: true, cacheControlMaxAge: 31536000, token: blobToken() };
-  const first = knownAccess || process.env.BLOB_ACCESS || 'public';
-  const order = first === 'private' ? ['private', 'public'] : ['public', 'private'];
-
-  let lastErr;
-  for (const access of order) {
-    try {
-      const blob = await put(pathname, buf, { ...opts, access });
-      knownAccess = access;
-      return { blob, access };
-    } catch (err) {
-      lastErr = err;
-      // Only the access-mismatch error is worth retrying the other way.
-      if (!/Cannot use (public|private) access on a (private|public) store/i.test(err.message || '')) {
-        throw err;
-      }
-      console.warn(`[blob-upload] store is not ${access}; retrying as ${access === 'public' ? 'private' : 'public'}`);
-    }
-  }
-  throw lastErr;
-}
-
-/** Removes an orphaned upload when the registration it belonged to failed. */
+/** Backward-compatible names used by register.js during the migration. */
 export function pathnameFrom(value) {
-  if (!value) return '';
+  const raw = String(value || '').trim();
   try {
-    const u = new URL(value);
-    return u.searchParams.get('p') || decodeURIComponent(u.pathname.replace(/^\//, ''));
+    const u = new URL(raw);
+    return u.searchParams.get('p') || '';
   } catch {
-    return String(value);
+    return raw;
   }
 }
 
 export async function deleteBlob(value) {
-  const pathname = pathnameFrom(value);
-  if (!pathname || !blobConfigured()) return false;
+  const { deleteReceipt } = await import('../lib/google-drive.js');
+  const id = pathnameFrom(value);
+  if (!id || !driveConfigured()) return false;
   try {
-    await del(pathname, { token: blobToken() });
+    await deleteReceipt(id);
     return true;
   } catch (err) {
-    console.error('[blob-upload] cleanup failed:', err.message);
+    console.error('[drive-upload] cleanup failed:', err.message);
     return false;
   }
 }
