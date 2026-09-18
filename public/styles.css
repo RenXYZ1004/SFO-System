@@ -1088,6 +1088,13 @@ a:hover{text-decoration:underline}
   user-select:none;-webkit-user-drag:none;pointer-events:none;
 }
 .j-face{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.j-front,.j-back{z-index:2}
+.j-side{
+  z-index:3;
+  opacity:0;
+  transform-origin:center;
+  transition:opacity .18s ease,filter .18s ease;
+}
 .j-front{transform:translateZ(calc(var(--depth) / 2))}
 .j-back{transform:rotateY(180deg) translateZ(calc(var(--depth) / 2))}
 

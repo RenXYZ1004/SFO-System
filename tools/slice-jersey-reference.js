@@ -1,5 +1,5 @@
 /**
- * Slices reference_shirt.png into the eight per-category jersey views the 3D
+ * Slices reference_shirt.png into the twelve per-category jersey views the 3D
  * viewer loads, and knocks the white page background out to transparency so
  * the artwork sits on the viewer's own stage rather than in a white box.
  *
@@ -12,7 +12,7 @@
  *
  * The jerseys are found rather than measured: the page background is flood
  * filled from the edges, what is left is grouped into connected shapes, and
- * the eight big ones are the garments. So a redrawn reference sheet with the
+ * the twelve big ones are the garments. So a redrawn reference sheet with the
  * panels in slightly different places still slices correctly; only the number
  * of jerseys and their reading order matter.
  */
@@ -23,10 +23,10 @@ import zlib from 'node:zlib';
 const SRC = process.argv[2] || 'reference_shirt.png';
 const OUT = process.argv[3] || 'public/shirt/jersey';
 
-/** Reading order of the reference sheet: two rows of two categories. */
+/** Reading order of the reference sheet: four rows of one category each. */
 const CATEGORIES = ['1k', '3k', '5k', '10k'];
-/** Within a category, the left garment is the front and the right the back. */
-const VIEWS = ['front', 'back'];
+/** Within a category, the three garments are front, side, and back, in that order. */
+const VIEWS = ['front', 'side', 'back'];
 
 /** A pixel this pale on all three channels is page, not garment. */
 const WHITE = 232;

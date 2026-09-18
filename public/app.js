@@ -834,11 +834,9 @@ const jerseySeen = new Set();
 function makeJersey(root, { onTurn } = {}) {
   const layers = Math.max(2, Number(root.dataset.layers) || 10);
 
-  // The shading is computed once and baked into the markup: the copies nearest
-  // the middle of the garment are the furthest from the light, which is what
-  // makes the stack read as a rounded body rather than a deck of cards. They
-  // are wound well down — an edge seen this obliquely is mostly shadow — and
-  // saturated back up, or the pale half of a two-tone shirt extrudes as grey.
+  // The front silhouette is still used for the shallow "body" between the
+  // printed faces. The supplied side view is then laid over that body at the
+  // quarter-turns, facing the reader instead of disappearing edge-on.
   const edges = Array.from({ length: layers }, (_, i) => {
     const t = (i + 1) / (layers + 1);
     const lit = (0.6 - 0.34 * Math.sin(Math.PI * t)).toFixed(3);
@@ -852,12 +850,10 @@ function makeJersey(root, { onTurn } = {}) {
       <div class="j-spin">
         <span class="j-edges" aria-hidden="true">${edges}</span>
         <img class="j-face j-front" alt="" draggable="false">
+        <img class="j-face j-side" alt="" draggable="false">
         <img class="j-face j-back" alt="" draggable="false">
       </div>
     </div>
-    <!-- Before a distance is picked there is no shirt to show, and hatching a
-         slot this size shouts about it. An outline of the thing that is coming
-         holds the space and stays quiet. -->
     <svg class="j-ghost" viewBox="0 0 100 110" aria-hidden="true" fill="none"
          stroke="currentColor" stroke-width="3" stroke-linejoin="round">
       <path d="M50 9 30 15 8 27l8 20 12-5v58h44V42l12 5 8-20-22-12z"/>
@@ -868,19 +864,28 @@ function makeJersey(root, { onTurn } = {}) {
   const stage = root.querySelector('.j-stage');
   const spin = root.querySelector('.j-spin');
   const front = root.querySelector('.j-front');
+  const side = root.querySelector('.j-side');
   const back = root.querySelector('.j-back');
   const edgeEls = [...root.querySelectorAll('.j-edge')];
   const note = root.querySelector('.j-note');
 
   let cat = '';
-  let ry = 0;            // degrees turned; unbounded, so a drag can wind on
+  let ry = 0;
   let showing = 'front';
   let drag = null;
 
-  /** Which side is towards the reader at the current angle. */
+  /**
+   * The side artwork is a supplied profile, so unlike a real mesh it cannot
+   * be put on a perpendicular CSS plane (that plane would be edge-on too).
+   * Instead it counter-rotates to face the reader exactly when the virtual
+   * body reaches 90/270 degrees. The front/back planes remain real 3D faces.
+   */
   const facing = () => {
     const n = ((ry % 360) + 360) % 360;
-    return n > 90 && n < 270 ? 'back' : 'front';
+    if (n > 45 && n < 135) return 'side';
+    if (n >= 135 && n <= 225) return 'back';
+    if (n > 225 && n < 315) return 'side';
+    return 'front';
   };
 
   const usable = () => cat && !root.classList.contains('is-missing');
@@ -893,9 +898,23 @@ function makeJersey(root, { onTurn } = {}) {
 
   function apply() {
     spin.style.transform = `rotateY(${ry.toFixed(2)}deg)`;
-    // 1 with a face towards the reader, 0 edge-on: the shadow on the floor
-    // narrows as the shirt turns away, which is most of what sells the depth.
-    root.style.setProperty('--j-turn', Math.abs(Math.cos(ry * Math.PI / 180)).toFixed(3));
+
+    const radians = ry * Math.PI / 180;
+    const cos = Math.abs(Math.cos(radians));
+    const sin = Math.abs(Math.sin(radians));
+
+    // Side art faces the reader while the parent continues to rotate. Mirroring
+    // it on the return quarter makes both sides use the same supplied profile.
+    const n = ((ry % 360) + 360) % 360;
+    const mirror = n > 180 ? -1 : 1;
+    side.style.transform =
+      `rotateY(${-ry.toFixed(2)}deg) scaleX(${mirror})`;
+    side.style.opacity = Math.pow(sin, 4).toFixed(3);
+    side.style.filter = `brightness(${(0.72 + 0.28 * sin).toFixed(3)}) saturate(1.08)`;
+
+    // Keep the side view from looking like a second shirt at the quarter turn:
+    // its opacity takes over as the real front/back faces turn edge-on.
+    root.style.setProperty('--j-turn', cos.toFixed(3));
 
     const now = facing();
     if (now !== showing) { showing = now; describe(); onTurn?.(now); }
@@ -909,17 +928,24 @@ function makeJersey(root, { onTurn } = {}) {
     if (instant) requestAnimationFrame(() => root.classList.remove('is-still'));
   }
 
-  /** Turns to a named side the short way round from wherever it is now. */
+  /** Turns to a named view the short way round from wherever it is now. */
   function face(which, opts) {
+    if (which === 'side') {
+      const targets = [90, 270];
+      const distance = (target) => {
+        const delta = ((target - ry + 540) % 360) - 180;
+        return Math.abs(delta);
+      };
+      const target = targets.reduce((a, b) => distance(a) <= distance(b) ? a : b);
+      setTurn(target + 360 * Math.round((ry - target) / 360), opts);
+      return;
+    }
     const deg = which === 'back' ? 180 : 0;
     setTurn(deg + 360 * Math.round((ry - deg) / 360), opts);
   }
 
-  /** Leans the whole stage towards a mouse crossing it. Purely a hover treat. */
   const lean = (deg) => { stage.style.transform = `rotateX(${deg.toFixed(2)}deg)`; };
 
-  // Artwork that has not arrived yet must not leave a broken shirt on the
-  // page: the viewer steps aside and the question goes on working without it.
   front.addEventListener('error', () => {
     root.classList.add('is-missing');
     note.textContent = 'Jersey artwork coming soon.';
@@ -952,7 +978,6 @@ function makeJersey(root, { onTurn } = {}) {
     const { moved } = drag;
     drag = null;
     root.classList.remove('is-turning');
-    // A tap is not a turn — it is the shortest way to ask for the other side.
     face(moved < TAP_SLOP ? (showing === 'front' ? 'back' : 'front') : facing());
   };
   stage.addEventListener('pointerup', release);
@@ -963,8 +988,6 @@ function makeJersey(root, { onTurn } = {}) {
     if (!usable()) return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
-      // Free rotation rather than a flip: a three-quarter view is worth
-      // being able to stop on, and the buttons follow whichever side wins.
       setTurn(ry + (e.key === 'ArrowRight' ? 45 : -45));
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -978,29 +1001,24 @@ function makeJersey(root, { onTurn } = {}) {
     const j = JERSEYS[cat];
     root.classList.toggle('is-empty', !j);
     root.classList.remove('is-missing');
-    // Nothing to say while empty: the ghost holds the slot and the hint under
-    // the card already asks for a distance. The note is for artwork that was
-    // asked for and did not arrive.
     note.textContent = '';
     lean(0);
 
     if (!j) {
-      [front, back, ...edgeEls].forEach((img) => img.removeAttribute('src'));
+      [front, side, back, ...edgeEls].forEach((img) => img.removeAttribute('src'));
       return;
     }
 
     const art = (view) => `${JERSEY_DIR}/${j.slug}-${view}.png`;
     front.src = art('front');
+    side.src = art('side');
     back.src = art('back');
-    // The body is extruded from the front silhouette alone: the two views cut
-    // the same outline, so a second stack would cost images and change nothing.
     edgeEls.forEach((img) => { img.src = art('front'); });
     root.style.setProperty('--j-tint', j.tint);
     face('front', { instant: true });
     describe();
   }
 
-  /** A turn on the way in, so the shirt arrives as an object, not a picture. */
   function reveal() {
     face('front', { instant: true });
     if (motionOff()) return;
@@ -1117,7 +1135,7 @@ function refreshJersey() {
   if (title) title.textContent = j ? `${cat} race jersey` : 'Race jersey';
 
   const sub = $('jersey-sub');
-  if (sub) sub.textContent = j ? `${j.colourway} · front and back` : 'Front and back';
+  if (sub) sub.textContent = j ? `${j.colourway} · front, side and back` : 'Front, side and back';
 }
 
 /**

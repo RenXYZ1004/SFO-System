@@ -52,12 +52,12 @@ match.
 
 ## `public/shirt/jersey/` — the race jerseys
 
-Eight files, and only these eight names:
+Twelve files, and only these twelve names:
 
-    1k-front.png    1k-back.png
-    3k-front.png    3k-back.png
-    5k-front.png    5k-back.png
-    10k-front.png   10k-back.png
+    1k-front.png    1k-side.png    1k-back.png
+    3k-front.png    3k-side.png    3k-back.png
+    5k-front.png    5k-side.png    5k-back.png
+    10k-front.png   10k-side.png   10k-back.png
 
 The name comes from the `race_category` answers in `lib/form-schema.js`, in
 lower case with the "K" kept: `1K` -> `1k`, `10K` -> `10k`. Add a distance
@@ -74,8 +74,8 @@ Requirements:
   against the dark theme.
 * The garment filling the frame, no caption or distance label in the image —
   the page writes those itself.
-* Front and back framed the same way, at the same size. They are hung back to
-  back, so a shirt that shifts or resizes when it turns looks like a mistake.
+* Front, side and back are framed consistently. The side artwork is used at the
+  quarter-turns so the shirt keeps a convincing silhouette while it rotates.
 * Roughly 3:4, portrait. Anything else is letterboxed, not cropped.
 * Around 900px on the long side is plenty; keep each file under about 250 KB.
   There are eight and they all load at once.
