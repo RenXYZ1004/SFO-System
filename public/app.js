@@ -909,11 +909,19 @@ function makeJersey(root, { onTurn } = {}) {
     const mirror = n > 180 ? -1 : 1;
     side.style.transform =
       `rotateY(${-ry.toFixed(2)}deg) scaleX(${mirror})`;
-    side.style.opacity = Math.pow(sin, 4).toFixed(3);
+    // The supplied side drawing is a real profile, so it should completely
+    // replace the artificial depth stack at the quarter-turn. Otherwise the
+    // dark front-silhouette copies remain visible as a black seam behind it.
+    // Fade all three layers against each other so 45deg is still a believable
+    // transition, while 90/270deg is cleanly just the supplied side artwork.
+    const sideFade = Math.pow(sin, 3);
+    const faceFade = Math.pow(cos, 2);
+    side.style.opacity = sideFade.toFixed(3);
     side.style.filter = `brightness(${(0.72 + 0.28 * sin).toFixed(3)}) saturate(1.08)`;
+    front.style.opacity = faceFade.toFixed(3);
+    back.style.opacity = faceFade.toFixed(3);
+    root.style.setProperty('--j-edge-opacity', Math.pow(cos, 3).toFixed(3));
 
-    // Keep the side view from looking like a second shirt at the quarter turn:
-    // its opacity takes over as the real front/back faces turn edge-on.
     root.style.setProperty('--j-turn', cos.toFixed(3));
 
     const now = facing();

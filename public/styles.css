@@ -1098,7 +1098,7 @@ a:hover{text-decoration:underline}
 .j-front{transform:translateZ(calc(var(--depth) / 2))}
 .j-back{transform:rotateY(180deg) translateZ(calc(var(--depth) / 2))}
 
-.j-edges{position:absolute;inset:0;transform-style:preserve-3d}
+.j-edges{position:absolute;inset:0;transform-style:preserve-3d;opacity:var(--j-edge-opacity,1);transition:opacity .18s ease}
 /* --z runs 0→1 through the stack, so the copies span the full depth. Their
    brightness is baked into the style attribute by app.js. */
 .j-edge{transform:translateZ(calc(var(--depth) * (0.5 - var(--z))))}
