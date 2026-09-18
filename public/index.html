@@ -302,8 +302,8 @@ We run because every step can make a difference.
               employees may settle it through <strong>salary deduction</strong>
               instead.</li>
           <li>Upload your proof of payment before submitting.</li>
-          <li>Read and agree to the <strong>Waiver of Liability</strong>
-              before you continue. It opens as a PDF:</li>
+          <li>Read the <strong>Data Privacy Advisory</strong> and confirm your consent below.</li>
+          <li>Read and agree to the <strong>Waiver of Liability</strong> before you continue. It opens as a PDF:</li>
         </ol>
 
         <div class="doc-links">
@@ -323,8 +323,35 @@ We run because every step can make a difference.
           </a>
         </div>
 
-        <!-- The gate for "Proceed": app.js keeps the button out of service
-             until this is ticked. -->
+        <a class="doc-link" href="/data.html" target="_blank" rel="noopener">
+          <span class="doc-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                 stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3.5 19 6v5.5c0 4.5-2.9 7.6-7 9-4.1-1.4-7-4.5-7-9V6l7-2.5Z"/>
+              <path d="M9 12h6M9 15h6"/>
+            </svg>
+          </span>
+          <span class="doc-text">
+            <span class="doc-name">Data Privacy Advisory</span>
+            <span class="doc-sub">Read the advisory · opens in a new tab</span>
+          </span>
+        </a>
+
+        <label class="agree" id="privacy-box">
+          <input type="checkbox" id="privacy-agree">
+          <span class="agree-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                 stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12.5l4.5 4.5L19 7"/>
+            </svg>
+          </span>
+          <span class="agree-text">
+            I have read and <strong>consent to the collection and processing of my personal data</strong>
+            for the Southville Run For A Cause 2026 registration.
+          </span>
+        </label>
+
+        <!-- The gate for "Proceed": both required confirmations must be ticked. -->
         <label class="agree" id="agree-box">
           <input type="checkbox" id="agree">
           <span class="agree-mark" aria-hidden="true">
@@ -334,7 +361,8 @@ We run because every step can make a difference.
             </svg>
           </span>
           <span class="agree-text">
-The information contained in these documents is confidential, privileged and only for the information of the intended recipient and may not be used, published or redistributed without the prior written consent of the respondents. The opinions expressed are in good faith and while every care has been taken in preparing these documents, respondents make no representations and give no warranties of whatever nature in respect of these documents, including but not limited to the accuracy or completeness of any information, facts and/or opinions contained therein.
+            I have read and <strong>accept the Waiver of Liability</strong>, and I agree
+            to its terms for the Southville Run For A Cause 2026.
           </span>
         </label>
 
@@ -364,7 +392,7 @@ The information contained in these documents is confidential, privileged and onl
           </svg>
         </span>
       </button>
-
+      <span class="proceed-help">Your data privacy consent and waiver acceptance are required before continuing.</span>
     </div>
 
   </main>

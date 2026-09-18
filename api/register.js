@@ -1,4 +1,4 @@
-import { FORM, validate, isActive, AGREEMENT, waiverState } from '../lib/form-schema.js';
+import { FORM, validate, isActive, AGREEMENT, PRIVACY, waiverState, privacyState } from '../lib/form-schema.js';
 import { appendRegistration } from '../lib/sheets.js';
 import { sendConfirmation, explainMailError, missingEnv } from '../lib/mailer.js';
 import { confirmationHtml, confirmationText } from '../lib/template.js';
@@ -60,8 +60,7 @@ export default async function handler(req, res) {
     timeStyle: 'short',
     timeZone: 'Asia/Manila',
   });
-  // true, or null when the page that submitted predates the waiver box.
-  // validate() has already turned away an outright refusal.
+  // validate() has already required an explicit waiver acceptance.
   const agreed = waiverState(body);
 
   // Carried as an answer as well as a column: that is what puts it in the
@@ -70,6 +69,7 @@ export default async function handler(req, res) {
   // receive.
   const answers = FORM.fields.map((f) => [f.label, values[f.name]]);
   answers.push([AGREEMENT.label, agreed === true ? AGREEMENT.agreed : '']);
+  answers.push([PRIVACY.label, privacyState(body) === true ? PRIVACY.agreed : '']);
   const labelled = Object.fromEntries(answers);
 
   // --- 1. record the registration — the database decides ------------

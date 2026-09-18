@@ -16,6 +16,7 @@ let SCHEMA = null;
 let proceedBlocked = false;
 
 const agreed = () => Boolean($('agree')?.checked);
+const privacyAgreed = () => Boolean($('privacy-agree')?.checked);
 
 // The key the server reads the acceptance under. /api/schema names it, so the
 // wire name lives in lib/form-schema.js alone; the fallback only matters if
@@ -80,12 +81,12 @@ function showView(name, { silent = false } = {}) {
   const form = $('view-form');
   if (!intro || !form) return;
 
-  // The waiver gate holds for every way into the form — the button, a
+  // Both consent gates hold for every way into the form — the button, a
   // #register deep link and the back button — not just the button click.
   // Turning someone back lands them on the box instead of the top of the
   // page, so the scroll and the focus below are left to nudgeAgreement().
   let toForm = name === 'form';
-  const turnedBack = toForm && !agreed();
+  const turnedBack = toForm && (!privacyAgreed() || !agreed());
   if (turnedBack) { toForm = false; name = 'intro'; }
 
   intro.hidden = toForm;
@@ -175,11 +176,15 @@ function wireWhy() {
  * than reviving a button that has nothing to open.
  */
 function wireAgreement() {
-  const box = $('agree');
-  if (!box) return;
-  box.addEventListener('change', () => {
-    $('agree-box')?.classList.remove('nudge');
-    syncProceed();
+  const privacy = $('privacy-agree');
+  const waiver = $('agree');
+  if (!privacy && !waiver) return;
+  [privacy, waiver].filter(Boolean).forEach((box) => {
+    box.addEventListener('change', () => {
+      $('privacy-box')?.classList.remove('nudge');
+      $('agree-box')?.classList.remove('nudge');
+      syncProceed();
+    });
   });
   syncProceed();
 }
@@ -188,26 +193,30 @@ function syncProceed() {
   const proceed = $('proceed');
   if (!proceed || proceedBlocked) return;
 
-  const ok = agreed();
+  const privacyOk = privacyAgreed();
+  const waiverOk = agreed();
+  const ok = privacyOk && waiverOk;
   proceed.disabled = !ok;
 
   const fine = $('proceed-fine');
   if (fine) {
     fine.textContent = ok
       ? 'Takes about 3 minutes. Have your proof of payment ready.'
-      : 'Tick the box above to continue.';
+      : !privacyOk
+        ? 'Please confirm the Data Privacy Advisory to continue.'
+        : 'Please accept the Waiver of Liability to continue.';
   }
 }
 
-/** Point at the box someone has just been turned back for. */
+/** Point at the first confirmation someone still needs to make. */
 function nudgeAgreement() {
-  const box = $('agree-box');
+  const box = privacyAgreed() ? $('agree-box') : $('privacy-box');
   if (!box) return;
   box.classList.remove('nudge');
-  void box.offsetWidth;                    // restart the animation
+  void box.offsetWidth;
   box.classList.add('nudge');
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  $('agree')?.focus({ preventScroll: true });
+  (privacyAgreed() ? $('agree') : $('privacy-agree'))?.focus({ preventScroll: true });
 }
 
 /* ---------- SISC salary deduction panel ---------- */
@@ -1736,7 +1745,7 @@ async function onSubmit(e) {
       headers: { 'Content-Type': 'application/json' },
       // The waiver ticked on the intro page travels with the answers: the
       // server refuses a registration without it, and records it as proof.
-      body: JSON.stringify({ ...v, [agreementKey()]: agreed(), _hp: '' }),
+      body: JSON.stringify({ ...v, [agreementKey()]: agreed(), privacy_agreed: privacyAgreed(), _hp: '' }),
     });
     data = await res.json();
   } catch {
