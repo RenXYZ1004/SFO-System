@@ -1273,7 +1273,11 @@ function field(f, id, star, help, describedBy, control) {
   </div>`;
 }
 
-const isPhone = (f) => /number|phone|contact|mobile/i.test(f.label) && f.type !== 'email';
+// "Emergency contact name" is a name, not a number: the keyword test alone
+// matched it and handed mobile users a numeric keypad, so a label that asks for
+// a name is excluded before the phone keywords are considered at all.
+const isPhone = (f) => /number|phone|contact|mobile/i.test(f.label)
+  && !/name/i.test(f.label) && f.type !== 'email';
 
 /* ---------- validation ---------- */
 
