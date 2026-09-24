@@ -217,6 +217,7 @@ function renderRows(d) {
       <td class="mono">${esc(r.reference)}</td>
       <td>${esc(r.full_name || '—')}</td>
       <td>${kind}</td>
+      <td>${esc(a['School / Affiliation'] ?? '—')}</td>
       <td>${esc(cat ? a[cat] ?? '—' : '—')}</td>
       <td>${esc(shirt ? a[shirt] ?? '—' : '—')}</td>
       <td class="dim">${esc(when(r.created_at))}</td>
@@ -327,11 +328,11 @@ const EXPORT_COLUMNS = {
   employee: [
     'Employee full name', 'Employee number', 'Department / Office',
     'Salary deduction authorization', 'Full name', 'Email address',
-    'Contact number', 'Race category', 'Shirt size',
+    'Contact number', 'School / Affiliation', 'Race category', 'Shirt size',
   ],
   other: [
-    'Full name', 'Email address', 'Contact number', 'Race category',
-    'Shirt size', 'Team / Organization', 'Payment method', 'Proof of payment',
+    'Full name', 'Email address', 'Contact number', 'School / Affiliation',
+    'Race category', 'Shirt size', 'Team / Organization', 'Payment method', 'Proof of payment',
   ],
 };
 
