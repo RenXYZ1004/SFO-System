@@ -274,7 +274,6 @@ function openSd() {
   } else {
     modal.setAttribute('open', '');
   }
-  modal.querySelector('input')?.focus();
 }
 
 function closeSd() {
@@ -1230,10 +1229,10 @@ function renderField(f) {
   if (f.type === 'file') {
     return field(f, id, star, help, describedBy, `
       <input type="hidden" name="${esc(f.name)}" id="${id}" value="">
-      <input type="file" id="${id}_picker" class="file-input"
-             accept="image/jpeg,image/png,image/webp,application/pdf"
-             aria-describedby="${esc(describedBy)}">
-      <label class="drop" for="${id}_picker" data-drop="${esc(f.name)}">
+      <label class="drop" data-drop="${esc(f.name)}">
+        <input type="file" id="${id}_picker" class="file-input"
+               accept="image/jpeg,image/png,image/webp,application/pdf"
+               aria-describedby="${esc(describedBy)}">
         <span class="drop-icon" aria-hidden="true">&#8679;</span>
         <span class="drop-main">Choose a file or drag it here</span>
         <span class="drop-sub">JPG, PNG, WEBP or PDF · up to 4&nbsp;MB</span>

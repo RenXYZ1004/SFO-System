@@ -602,8 +602,12 @@ input:focus,textarea:focus,select:focus{
 fieldset{border:0;margin:0;padding:0;min-width:0}
 legend{padding:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
-.chip{position:relative}
-.chip input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+/* Keep the native radio as the thing that receives the tap. On iOS, an
+   absolutely positioned input whose containing block is an inline label can
+   end up with a fragile hit box. Make the label a real box and stretch the
+   input across the visible chip instead of relying on label retargeting. */
+.chip{position:relative;display:inline-block}
+.chip input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
 .chip span{
   display:block;padding:9px 15px;border:1px solid var(--line-2);border-radius:99px;
   font-size:14.5px;font-weight:500;color:var(--ink-2);background:var(--card);
@@ -618,13 +622,13 @@ legend{padding:0}
 /* file upload */
 .file-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 .drop{
-  display:flex;flex-direction:column;align-items:center;gap:3px;
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:22px 16px;border:1.5px dashed var(--line-2);border-radius:11px;
   background:var(--bg);cursor:pointer;text-align:center;
   transition:border-color .15s,background .15s;
 }
 .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
-.file-input:focus-visible + .drop{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+.drop:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
 .drop-icon{
   font-size:19px;line-height:1;color:var(--accent);
   width:34px;height:34px;border-radius:50%;background:var(--accent-soft);
@@ -810,7 +814,10 @@ a:hover{text-decoration:underline}
   transition:border-color .15s,background .15s,box-shadow .15s;
 }
 .agree:hover{border-color:var(--accent);background:var(--accent-soft)}
-.agree input{position:absolute;opacity:0;width:0;height:0}
+/* The checkbox remains native and accessible, but its invisible hit target
+   covers the whole agreement card. This avoids relying on Safari to retarget a
+   tap from a label to a zero-size input. */
+.agree input{position:absolute;inset:0;z-index:2;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
 .agree-mark{
   flex:0 0 auto;width:20px;height:20px;margin-top:1px;border-radius:6px;
   display:grid;place-items:center;
@@ -1547,6 +1554,29 @@ a:hover{text-decoration:underline}
 
 /* A finger is not a cursor: hover effects latch on after a tap and have to
    be sent back, and every target has to be big enough to hit. */
+@media (pointer:coarse){
+  /* Native controls stay native on touch devices. In particular, iOS Safari's
+     own select picker is more reliable than a CSS appearance reset. */
+  input[type=text],input[type=email],input[type=tel],textarea,select{
+    min-height:48px;
+    font-size:16px;
+    touch-action:manipulation;
+  }
+  select{
+    -webkit-appearance:auto;
+    appearance:auto;
+    background-image:none;
+    padding-right:13px;
+  }
+  /* The file picker gets a direct, full-size native hit target through the
+     label wrapper; no tiny 1px target is left for an iPhone to find. */
+  .drop .file-input{
+    position:absolute;inset:0;width:100%;height:100%;
+    margin:0;opacity:0;cursor:pointer;overflow:hidden;
+  }
+  .modal-body{-webkit-overflow-scrolling:touch}
+}
+
 @media (hover:none){
   .shot:hover img{transform:none}
   .cause-btn:hover{background:var(--card);border-color:var(--accent-ring);transform:none}
@@ -1555,6 +1585,11 @@ a:hover{text-decoration:underline}
 }
 
 @media (pointer:coarse){
+  /* Do not animate a native dialog under a finger. iOS has had multiple
+     focus/caret issues around top-layer dialogs and transforms; the form is
+     more important than the entrance motion here. */
+  .modal[open]{animation:none}
+
   /* The grey flash Android paints over a tapped control fights the styling
      these already have for the same state. */
   a,button,label,summary,.chip span{-webkit-tap-highlight-color:transparent}
